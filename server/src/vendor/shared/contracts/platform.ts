@@ -173,6 +173,27 @@ export const PrMeta = z.object({
   // Latest-review cost in USD (list endpoint only). Sum of the producing run's
   // cost_usd; null/absent until reviewed or when the model price is unknown.
   cost_usd: z.number().nullish(),
+  // Latest-review findings, broken down by severity, plus a capped preview
+  // list for the list's hover tooltip (list endpoint only). Null until
+  // reviewed (same nullability convention as `score`).
+  findings: z
+    .object({
+      critical: z.number().int(),
+      warning: z.number().int(),
+      suggestion: z.number().int(),
+      items: z.array(
+        z.object({
+          severity: z.string(),
+          title: z.string(),
+          file: z.string(),
+          start_line: z.number().int(),
+          category: z.string(),
+          confidence: z.number(),
+          rationale: z.string(),
+        }),
+      ),
+    })
+    .nullish(),
 });
 export type PrMeta = z.infer<typeof PrMeta>;
 

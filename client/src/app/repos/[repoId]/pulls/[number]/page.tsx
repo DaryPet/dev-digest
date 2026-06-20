@@ -21,7 +21,7 @@ import { usePrReviews, useCancelRun, usePrActiveRuns, usePrRuns, useDeleteRun } 
 import { useActiveRepo, useRepoNotFound } from "../../../../../lib/repo-context";
 import { ApiError } from "../../../../../lib/api";
 import { githubPrUrl } from "../../../../../lib/github-urls";
-import type { FindingRecord } from "@devdigest/shared";
+import type { FindingRecord, Severity } from "@devdigest/shared";
 
 export default function PRDetailPage() {
   const params = useParams<{ repoId: string; number: string }>();
@@ -59,6 +59,7 @@ export default function PRDetailPage() {
 
   const tab = search.get("tab") ?? "overview";
   const traceRunId = search.get("trace");
+  const severityFilter = (search.get("severity") as Severity | null) ?? null;
   const setParam = (key: string, val: string | null) => {
     const sp = new URLSearchParams(search.toString());
     if (val == null) sp.delete(key);
@@ -142,12 +143,15 @@ export default function PRDetailPage() {
             liveRunIds={liveRunIds}
             reviewRunning={reviewRunning}
             lethalTrifecta={lethalTrifecta}
+            findings={allFindings}
             runs={runs}
             prRuns={prRuns}
             prCommits={pr.commits}
             repoFullName={repoFullName}
             headSha={pr.head_sha}
             cancelMutation={cancel}
+            severityFilter={severityFilter}
+            onSeverityChange={(s) => setParam("severity", s)}
             onOpenTrace={(id) => setParam("trace", id)}
             onDelete={(id) => {
               if (window.confirm("Delete this run from history? (its logs are removed too)"))

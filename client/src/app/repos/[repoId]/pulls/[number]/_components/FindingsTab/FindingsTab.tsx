@@ -5,8 +5,9 @@ import { Icon, Badge, Button, SectionLabel, EmptyState } from "@devdigest/ui";
 import { RunStatus } from "../RunStatus";
 import { RunHistory } from "../RunHistory/RunHistory";
 import { ReviewRunAccordion } from "../ReviewRunAccordion";
+import { SeverityCounter } from "../SeverityCounter";
 import { s } from "./styles";
-import type { FindingRecord, ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
+import type { FindingRecord, ReviewRecord, RunSummary, PrCommit, Severity } from "@devdigest/shared";
 import type { UseMutationResult } from "@tanstack/react-query";
 
 interface FindingsTabProps {
@@ -14,6 +15,8 @@ interface FindingsTabProps {
   liveRunIds: string[];
   reviewRunning: boolean;
   lethalTrifecta: FindingRecord[];
+  /** All findings across every run, for the SeverityCounter aggregate. */
+  findings: FindingRecord[];
   runs: ReviewRecord[];
   prRuns: RunSummary[] | undefined;
   prCommits: PrCommit[];
@@ -21,6 +24,8 @@ interface FindingsTabProps {
   /** owner/repo + head sha — used to deep-link a finding's file:line to GitHub. */
   repoFullName?: string | null;
   headSha?: string | null;
+  severityFilter: Severity | null;
+  onSeverityChange: (severity: Severity | null) => void;
   onOpenTrace: (id: string) => void;
   onDelete: (id: string) => void;
   onRunDone: () => void;
@@ -31,12 +36,15 @@ export function FindingsTab({
   liveRunIds,
   reviewRunning,
   lethalTrifecta,
+  findings,
   runs,
   prRuns,
   prCommits,
   cancelMutation,
   repoFullName,
   headSha,
+  severityFilter,
+  onSeverityChange,
   onOpenTrace,
   onDelete,
   onRunDone,
@@ -62,6 +70,17 @@ export function FindingsTab({
     },
     [onDelete],
   );
+
+  // Per-run findings, keyed by run_id — feeds the Timeline hover preview
+  // (RunHistory). Sourced from the same `runs` data already fetched for the
+  // Review-runs accordions below, no extra request.
+  const findingsByRunId = React.useMemo(() => {
+    const map = new Map<string, FindingRecord[]>();
+    for (const review of runs) {
+      if (review.run_id) map.set(review.run_id, review.findings);
+    }
+    return map;
+  }, [runs]);
 
   // Timeline → Review-runs navigation: clicking an agent name in the timeline
   // opens + scrolls to that run's accordion below. The nonce re-triggers the
@@ -131,6 +150,9 @@ export function FindingsTab({
           <RunHistory
             runs={prRuns ?? []}
             commits={prCommits}
+            findingsByRunId={findingsByRunId}
+            repoFullName={repoFullName}
+            headSha={headSha}
             onOpenTrace={handleOpenTrace}
             onGoToReview={handleGoToReview}
             onDelete={handleDelete}
@@ -144,6 +166,9 @@ export function FindingsTab({
       >
         Review runs
       </SectionLabel>
+      {findings.length > 0 && (
+        <SeverityCounter findings={findings} selected={severityFilter} onSelect={onSeverityChange} />
+      )}
       {runs.length === 0 ? (
         reviewRunning || liveRunIds.length > 0 ? null : (
           <EmptyState
@@ -164,6 +189,7 @@ export function FindingsTab({
             headSha={headSha}
             targetRunId={target?.runId ?? null}
             targetNonce={target?.n ?? 0}
+            severityFilter={severityFilter}
           />
         ))
       )}

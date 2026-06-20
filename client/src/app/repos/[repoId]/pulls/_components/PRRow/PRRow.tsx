@@ -7,6 +7,8 @@ import { useTranslations } from "next-intl";
 import { Icon, Avatar, Badge, CircularScore } from "@devdigest/ui";
 import type { PrMeta } from "@/lib/types";
 import { RunCostBadge } from "@/components/RunCostBadge/RunCostBadge";
+import { SeverityCounts, FindingsHoverCard } from "@/components/SeverityCounts";
+import { useActiveRepo } from "@/lib/repo-context";
 import { SIZE_COLOR, STATUS_META } from "../../constants";
 import { relativeTime, sizeOf } from "../../helpers";
 import { s } from "../../styles";
@@ -14,6 +16,7 @@ import { s } from "../../styles";
 export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
   const t = useTranslations("prReview");
   const router = useRouter();
+  const { activeRepo } = useActiveRepo();
   const [h, setH] = React.useState(false);
   const st = STATUS_META[pr.status] ?? STATUS_META.needs_review!;
   const { size, lines } = sizeOf(pr);
@@ -50,6 +53,26 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
       <div style={s.scoreCell}>
         {reviewed ? (
           <CircularScore score={pr.score!} size={34} stroke={3} />
+        ) : (
+          <span style={s.muted}>—</span>
+        )}
+      </div>
+      <div style={s.findingsCell} onClick={(e) => e.stopPropagation()}>
+        {pr.findings &&
+        pr.findings.critical + pr.findings.warning + pr.findings.suggestion > 0 ? (
+          <FindingsHoverCard
+            items={pr.findings.items}
+            repoFullName={activeRepo?.full_name ?? null}
+            headSha={pr.head_sha}
+          >
+            <SeverityCounts
+              critical={pr.findings.critical}
+              warning={pr.findings.warning}
+              suggestion={pr.findings.suggestion}
+              hideZero
+              size={13}
+            />
+          </FindingsHoverCard>
         ) : (
           <span style={s.muted}>—</span>
         )}

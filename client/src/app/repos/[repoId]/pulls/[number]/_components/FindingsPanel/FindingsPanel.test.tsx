@@ -31,6 +31,24 @@ const FINDINGS: FindingRecord[] = [
     accepted_at: null,
     dismissed_at: null,
   },
+  {
+    id: "f2",
+    severity: "WARNING",
+    category: "perf",
+    title: "N+1 query",
+    file: "src/api.ts",
+    start_line: 20,
+    end_line: 22,
+    rationale: "Loop calls the DB once per item.",
+    suggestion: null,
+    confidence: 0.9,
+    kind: "finding",
+    trifecta_components: null,
+    evidence: null,
+    review_id: "r1",
+    accepted_at: null,
+    dismissed_at: null,
+  },
 ];
 
 function renderWithIntl(ui: React.ReactElement) {
@@ -51,5 +69,11 @@ describe("FindingsPanel (smoke)", () => {
   it("shows the empty state when nothing matches", () => {
     renderWithIntl(<FindingsPanel findings={[]} prId="pr1" />);
     expect(screen.getByText("No findings match")).toBeInTheDocument();
+  });
+
+  it("only shows findings matching the severity filter", () => {
+    renderWithIntl(<FindingsPanel findings={FINDINGS} prId="pr1" severityFilter="WARNING" />);
+    expect(screen.getByText("N+1 query")).toBeInTheDocument();
+    expect(screen.queryByText("Hardcoded secret")).not.toBeInTheDocument();
   });
 });
