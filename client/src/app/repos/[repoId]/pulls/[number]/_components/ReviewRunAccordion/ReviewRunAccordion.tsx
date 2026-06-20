@@ -7,7 +7,7 @@
 
 import React from "react";
 import { Icon, Badge } from "@devdigest/ui";
-import type { ReviewRecord, Verdict } from "@devdigest/shared";
+import type { ReviewRecord, Verdict, Severity } from "@devdigest/shared";
 import { FindingsPanel } from "../FindingsPanel";
 import { VerdictBanner } from "../VerdictBanner";
 import { useDeleteReview } from "../../../../../../../lib/hooks/reviews";
@@ -31,6 +31,7 @@ export function ReviewRunAccordion({
   headSha,
   targetRunId = null,
   targetNonce = 0,
+  severityFilter = null,
 }: {
   review: ReviewRecord;
   prId: string;
@@ -41,8 +42,12 @@ export function ReviewRunAccordion({
    *  (driven from the Timeline: clicking an agent name navigates here). */
   targetRunId?: string | null;
   targetNonce?: number;
+  /** Page-level severity filter (SeverityCounter) — forces this run open so
+   *  its filtered findings are visible without a manual expand. */
+  severityFilter?: Severity | null;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
+  const effectiveOpen = open || severityFilter != null;
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     if (review.run_id && review.run_id === targetRunId) {
@@ -129,11 +134,11 @@ export function ReviewRunAccordion({
         </button>
         <Icon.ChevronDown
           size={16}
-          style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s", color: "var(--text-muted)" }}
+          style={{ transform: effectiveOpen ? "rotate(180deg)" : "none", transition: "transform .15s", color: "var(--text-muted)" }}
         />
       </div>
 
-      {open && (
+      {effectiveOpen && (
         <div style={{ padding: "0 16px 16px" }}>
           {review.verdict && (
             <div style={{ marginBottom: 16 }}>
@@ -152,6 +157,7 @@ export function ReviewRunAccordion({
             prId={prId}
             repoFullName={repoFullName}
             headSha={headSha}
+            severityFilter={severityFilter}
           />
         </div>
       )}

@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { Db } from '../../../db/client.js';
 import * as t from '../../../db/schema.js';
 import type { RunSummary, RunTrace } from '@devdigest/shared';
@@ -48,6 +48,29 @@ export async function listRunsForPull(
     .leftJoin(t.agents, eq(t.agents.id, t.agentRuns.agentId))
     .where(and(eq(t.agentRuns.workspaceId, workspaceId), eq(t.agentRuns.prId, prId)))
     .orderBy(desc(t.agentRuns.ranAt));
+
+  // WARNING-severity count per run — computed on read (no denormalized column,
+  // unlike blockers/findings_count) via reviews.run_id → findings.review_id.
+  const runIds = rows.map(({ run }) => run.id);
+  const warningsByRunId = new Map<string, number>();
+  if (runIds.length > 0) {
+    const warnRows = await db
+      .select({ runId: t.reviews.runId, count: sql<number>`count(*)` })
+      .from(t.findings)
+      .innerJoin(t.reviews, eq(t.reviews.id, t.findings.reviewId))
+      .where(
+        and(
+          inArray(t.reviews.runId, runIds),
+          eq(t.findings.severity, 'WARNING'),
+          isNull(t.findings.dismissedAt),
+        ),
+      )
+      .groupBy(t.reviews.runId);
+    for (const r of warnRows) {
+      if (r.runId) warningsByRunId.set(r.runId, Number(r.count));
+    }
+  }
+
   return rows.map(({ run, agentName }) => ({
     run_id: run.id,
     agent_id: run.agentId,
@@ -65,6 +88,7 @@ export async function listRunsForPull(
     ran_at: run.ranAt ? run.ranAt.toISOString() : null,
     score: run.score,
     blockers: run.blockers,
+    warnings: warningsByRunId.get(run.id) ?? null,
   }));
 }
 

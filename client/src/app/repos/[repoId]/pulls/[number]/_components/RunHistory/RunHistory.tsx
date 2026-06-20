@@ -3,8 +3,9 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { Badge, Icon, CircularScore, type IconName } from "@devdigest/ui";
-import type { RunSummary, PrCommit } from "@devdigest/shared";
+import type { RunSummary, PrCommit, FindingRecord } from "@devdigest/shared";
 import { RunCostBadge } from "@/components/RunCostBadge/RunCostBadge";
+import { SeverityCounts, FindingsHoverCard } from "@/components/SeverityCounts";
 
 /**
  * PR timeline — every agent run interleaved with the PR's commits, newest-first
@@ -88,12 +89,20 @@ function tsOf(s: string | null | undefined): number {
 export function RunHistory({
   runs,
   commits = [],
+  findingsByRunId,
+  repoFullName,
+  headSha,
   onOpenTrace,
   onGoToReview,
   onDelete,
 }: {
   runs: RunSummary[];
   commits?: PrCommit[];
+  /** This run's findings, keyed by run_id — feeds the severity-badge hover preview. */
+  findingsByRunId?: Map<string, FindingRecord[]>;
+  /** owner/repo + head sha — make the hover preview's file:line a GitHub link. */
+  repoFullName?: string | null;
+  headSha?: string | null;
   /** Open the trace + log drawer for a run (the logs icon). */
   onOpenTrace: (runId: string) => void;
   /** Jump to this run's inline review accordion below (clicking the agent name). */
@@ -190,8 +199,24 @@ export function RunHistory({
                 </div>
               )}
               {settled && (
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  {t("runStatus.findings", { count: r.findings_count ?? 0 })}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}>
+                  <FindingsHoverCard
+                    items={(findingsByRunId?.get(r.run_id) ?? [])
+                      .filter((f) => !f.dismissed_at)
+                      .map((f) => ({
+                        severity: f.severity,
+                        title: f.title,
+                        file: f.file,
+                        start_line: f.start_line,
+                        category: f.category,
+                        confidence: f.confidence,
+                        rationale: f.rationale,
+                      }))}
+                    repoFullName={repoFullName}
+                    headSha={headSha}
+                  >
+                    <SeverityCounts critical={r.blockers} warning={r.warnings} hideZero size={12.5} />
+                  </FindingsHoverCard>
                   {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
                 </div>
               )}
