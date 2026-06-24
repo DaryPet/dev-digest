@@ -184,6 +184,12 @@ export class ReviewRunExecutor {
 
       const task = taskLine(pull) + rankNote;
 
+      // Linked skills (Agent editor → Skills tab). Disabled skills are excluded;
+      // remaining ones are joined in `order` and injected as a "## Skills / rules"
+      // section by reviewer-core's assemblePrompt.
+      const linkedSkills = await this.agents.linkedSkills(agent.id);
+      const skills = linkedSkills.filter((l) => l.skill.enabled).map((l) => l.skill.body);
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -204,6 +210,7 @@ export class ReviewRunExecutor {
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
+        ...(skills.length > 0 ? { skills } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),
