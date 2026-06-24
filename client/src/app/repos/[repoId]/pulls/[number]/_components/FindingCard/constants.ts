@@ -1,12 +1,5 @@
 /** Constants for FindingCard. */
 
-/** Severity → CSS colour token. */
-export const SEV_COLOR: Record<string, string> = {
-  CRITICAL: "var(--crit)",
-  WARNING: "var(--warn)",
-  SUGGESTION: "var(--sugg)",
-  INFO: "var(--info)",
-};
-
-/** Fallback colour for an unknown severity. */
+/** Fallback colour for an unknown severity (severity→colour itself comes
+ *  from the shared `SEV` token map in `@devdigest/ui`, not a local copy). */
 export const SEV_COLOR_FALLBACK = "var(--text-muted)";

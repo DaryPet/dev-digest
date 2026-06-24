@@ -3,20 +3,31 @@
 Local-first AI PR reviewer. Course starter: Part-0 works end to end; each
 lesson adds one feature.
 
+## MANDATORY — engineering-insights (read this before doing anything else)
+
+This is a hard requirement, not a suggestion, not something to do "if there's
+time." It applies to every session that touches `client/`, `server/`,
+`reviewer-core/`, or `e2e/` — including quick fixes, audits, and questions
+that turn into work. Skipping it is a protocol violation, the same severity
+as editing a do-not-touch path.
+
+1. **Before exploring code or doing any work:** open and read the
+   `INSIGHTS.md` of every package you're about to touch
+   (`client/INSIGHTS.md`, `server/INSIGHTS.md`, `reviewer-core/INSIGHTS.md`,
+   `e2e/INSIGHTS.md`). State back, briefly, the top relevant points before
+   starting. Do this first — before spawning Explore agents, before reading
+   other code, before anything else. Treat it as high-confidence guidance
+   unless told otherwise.
+2. **At the end of the session, unprompted** (do not wait for the user to
+   ask): run the `engineering-insights` skill against every package you
+   touched. If nothing substantial came up, write nothing — but the *check*
+   itself is never optional.
+
 ## Before answering
 
 Always search the relevant package's `docs/`, `specs/`, and `INSIGHTS.md` for
 what the user asks about FIRST — these are curated and may already answer
 it — then read code.
-
-## Session protocol — engineering-insights
-
-- **Start of session:** read the touched module's `INSIGHTS.md` and briefly
-  summarize the top relevant points; treat it as high-confidence guidance
-  unless told otherwise.
-- **End of session:** run the `engineering-insights` skill to capture any new,
-  substantial insight into that module's `INSIGHTS.md`. If nothing substantial
-  came up, write nothing. Do not skip the check.
 
 ## Conventions (not obvious from code)
 

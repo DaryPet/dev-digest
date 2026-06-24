@@ -37,6 +37,74 @@ function outcomeOf(run: RunSummary): Outcome {
   return { key: "approved", color: "var(--ok)", bg: "var(--ok-bg)", icon: "CheckCircle" };
 }
 
+/** Epoch ms for sorting; unparseable / missing timestamps sort last. */
+function tsOf(s: string | null | undefined): number {
+  if (!s) return 0;
+  const n = Date.parse(s);
+  return Number.isNaN(n) ? 0 : n;
+}
+
+type TimelineItem =
+  | { kind: "run"; ts: number; run: RunSummary }
+  | { kind: "commit"; ts: number; commit: PrCommit };
+
+// --- CommitRow ---------------------------------------------------------
+
+// Commits are markers, not actions — lighter (dashed, transparent) so they read
+// as separators between the runs they sit chronologically between.
+const commitRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  width: "100%",
+  padding: "8px 14px",
+  borderRadius: 8,
+  border: "1px dashed var(--border)",
+  background: "transparent",
+};
+
+const commitShaStyle: React.CSSProperties = {
+  fontSize: 12,
+  color: "var(--text-secondary)",
+  flexShrink: 0,
+};
+
+const commitMessageStyle: React.CSSProperties = {
+  fontSize: 12.5,
+  color: "var(--text-secondary)",
+  flex: 1,
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const commitAuthorStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: "var(--text-muted)",
+  flexShrink: 0,
+};
+
+function CommitRow({ commit }: { commit: PrCommit }) {
+  return (
+    <div style={commitRowStyle}>
+      <Icon.GitCommit size={15} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+      <span className="mono" style={commitShaStyle}>
+        {commit.sha.slice(0, 7)}
+      </span>
+      <span style={commitMessageStyle} title={commit.message}>
+        {commit.message.split("\n")[0]}
+      </span>
+      <span style={commitAuthorStyle}>{commit.author}</span>
+      {commit.committed_at && (
+        <span style={commitAuthorStyle}>{new Date(commit.committed_at).toLocaleTimeString()}</span>
+      )}
+    </div>
+  );
+}
+
+// --- RunRow -------------------------------------------------------------
+
 const rowStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -62,29 +130,168 @@ const iconBtnStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
-// Commits are markers, not actions — lighter (dashed, transparent) so they read
-// as separators between the runs they sit chronologically between.
-const commitRowStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  width: "100%",
-  padding: "8px 14px",
-  borderRadius: 8,
-  border: "1px dashed var(--border)",
-  background: "transparent",
+const agentNameStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--text-primary)",
 };
 
-type TimelineItem =
-  | { kind: "run"; ts: number; run: RunSummary }
-  | { kind: "commit"; ts: number; commit: PrCommit };
+const agentButtonStyle: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  padding: 0,
+  font: "inherit",
+  fontWeight: 600,
+  color: "var(--text-primary)",
+};
 
-/** Epoch ms for sorting; unparseable / missing timestamps sort last. */
-function tsOf(s: string | null | undefined): number {
-  if (!s) return 0;
-  const n = Date.parse(s);
-  return Number.isNaN(n) ? 0 : n;
+const agentModelStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 400,
+  color: "var(--text-muted)",
+};
+
+const errorRowStyle: React.CSSProperties = {
+  fontSize: 12,
+  color: "var(--crit)",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const findingsRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  fontSize: 12,
+  color: "var(--text-muted)",
+};
+
+const metaColStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-end",
+  gap: 2,
+  fontSize: 11,
+  color: "var(--text-muted)",
+  flexShrink: 0,
+};
+
+const deleteBtnStyle: React.CSSProperties = {
+  display: "inline-flex",
+  padding: 3,
+  borderRadius: 5,
+  color: "var(--text-muted)",
+  flexShrink: 0,
+  cursor: "pointer",
+};
+
+function RunRow({
+  run: r,
+  findingsByRunId,
+  repoFullName,
+  headSha,
+  onOpenTrace,
+  onGoToReview,
+  onDelete,
+}: {
+  run: RunSummary;
+  findingsByRunId?: Map<string, FindingRecord[]>;
+  repoFullName?: string | null;
+  headSha?: string | null;
+  onOpenTrace: (runId: string) => void;
+  onGoToReview?: (runId: string) => void;
+  onDelete?: (runId: string) => void;
+}) {
+  const t = useTranslations("prReview");
+  const o = outcomeOf(r);
+  const settled = r.status === "done";
+
+  return (
+    <div style={rowStyle}>
+      <Badge color={o.color} bg={o.bg} icon={o.icon}>
+        {t(`runStatus.${o.key}`)}
+      </Badge>
+      {settled && r.score != null && <CircularScore score={r.score} size={30} stroke={3} />}
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+        <div style={agentNameStyle}>
+          <button
+            type="button"
+            onClick={() => onGoToReview?.(r.run_id)}
+            title={t("timeline.goToReview")}
+            style={{
+              ...agentButtonStyle,
+              cursor: onGoToReview ? "pointer" : "default",
+              textDecoration: onGoToReview ? "underline" : "none",
+              textDecorationStyle: "dotted",
+              textUnderlineOffset: 3,
+            }}
+          >
+            {r.agent_name ?? "Agent"}
+          </button>{" "}
+          <span className="mono" style={agentModelStyle}>
+            {r.provider}/{r.model}
+          </span>
+        </div>
+        {r.status === "failed" && r.error && (
+          <div style={errorRowStyle} title={r.error}>
+            {r.error}
+          </div>
+        )}
+        {settled && (
+          <div style={findingsRowStyle}>
+            <FindingsHoverCard
+              items={(findingsByRunId?.get(r.run_id) ?? [])
+                .filter((f) => !f.dismissed_at)
+                .map((f) => ({
+                  severity: f.severity,
+                  title: f.title,
+                  file: f.file,
+                  start_line: f.start_line,
+                  category: f.category,
+                  confidence: f.confidence,
+                  rationale: f.rationale,
+                }))}
+              repoFullName={repoFullName}
+              headSha={headSha}
+            >
+              <SeverityCounts critical={r.blockers} warning={r.warnings} hideZero size={12.5} />
+            </FindingsHoverCard>
+            {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
+          </div>
+        )}
+      </div>
+      <div style={metaColStyle}>
+        {settled && (
+          <RunCostBadge cost={r.cost_usd} tokensIn={r.tokens_in} tokensOut={r.tokens_out} variant="detailed" />
+        )}
+        {r.ran_at && <span>{new Date(r.ran_at).toLocaleTimeString()}</span>}
+      </div>
+      <button
+        type="button"
+        title={t("timeline.openTrace")}
+        aria-label={t("timeline.openTrace")}
+        onClick={() => onOpenTrace(r.run_id)}
+        style={iconBtnStyle}
+      >
+        <Icon.FileText size={13} />
+      </button>
+      {onDelete && r.status !== "running" && (
+        <span
+          role="button"
+          aria-label={t("timeline.deleteRun")}
+          title={t("timeline.deleteRun")}
+          onClick={() => onDelete(r.run_id)}
+          style={deleteBtnStyle}
+        >
+          <Icon.Trash size={13} />
+        </span>
+      )}
+    </div>
+  );
 }
+
+// --- RunHistory -----------------------------------------------------------
 
 export function RunHistory({
   runs,
@@ -109,7 +316,6 @@ export function RunHistory({
   onGoToReview?: (runId: string) => void;
   onDelete?: (runId: string) => void;
 }) {
-  const t = useTranslations("prReview");
   if (runs.length === 0 && commits.length === 0) return null;
 
   const items: TimelineItem[] = [
@@ -123,138 +329,22 @@ export function RunHistory({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {items.map((item) => {
-        if (item.kind === "commit") {
-          const c = item.commit;
-          return (
-            <div key={`commit:${c.sha}`} style={commitRowStyle}>
-              <Icon.GitCommit size={15} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-              <span className="mono" style={{ fontSize: 12, color: "var(--text-secondary)", flexShrink: 0 }}>
-                {c.sha.slice(0, 7)}
-              </span>
-              <span
-                style={{
-                  fontSize: 12.5,
-                  color: "var(--text-secondary)",
-                  flex: 1,
-                  minWidth: 0,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-                title={c.message}
-              >
-                {c.message.split("\n")[0]}
-              </span>
-              <span style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>{c.author}</span>
-              {c.committed_at && (
-                <span style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
-                  {new Date(c.committed_at).toLocaleTimeString()}
-                </span>
-              )}
-            </div>
-          );
-        }
-
-        const r = item.run;
-        const o = outcomeOf(r);
-        const settled = r.status === "done";
-        return (
-          <div key={`run:${r.run_id}`} style={rowStyle}>
-            <Badge color={o.color} bg={o.bg} icon={o.icon}>
-              {t(`runStatus.${o.key}`)}
-            </Badge>
-            {settled && r.score != null && <CircularScore score={r.score} size={30} stroke={3} />}
-            <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                <button
-                  type="button"
-                  onClick={() => onGoToReview?.(r.run_id)}
-                  title={t("timeline.goToReview")}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    padding: 0,
-                    font: "inherit",
-                    fontWeight: 600,
-                    color: "var(--text-primary)",
-                    cursor: onGoToReview ? "pointer" : "default",
-                    textDecoration: onGoToReview ? "underline" : "none",
-                    textDecorationStyle: "dotted",
-                    textUnderlineOffset: 3,
-                  }}
-                >
-                  {r.agent_name ?? "Agent"}
-                </button>{" "}
-                <span className="mono" style={{ fontSize: 12, fontWeight: 400, color: "var(--text-muted)" }}>
-                  {r.provider}/{r.model}
-                </span>
-              </div>
-              {r.status === "failed" && r.error && (
-                <div
-                  style={{ fontSize: 12, color: "var(--crit)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                  title={r.error}
-                >
-                  {r.error}
-                </div>
-              )}
-              {settled && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}>
-                  <FindingsHoverCard
-                    items={(findingsByRunId?.get(r.run_id) ?? [])
-                      .filter((f) => !f.dismissed_at)
-                      .map((f) => ({
-                        severity: f.severity,
-                        title: f.title,
-                        file: f.file,
-                        start_line: f.start_line,
-                        category: f.category,
-                        confidence: f.confidence,
-                        rationale: f.rationale,
-                      }))}
-                    repoFullName={repoFullName}
-                    headSha={headSha}
-                  >
-                    <SeverityCounts critical={r.blockers} warning={r.warnings} hideZero size={12.5} />
-                  </FindingsHoverCard>
-                  {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
-                </div>
-              )}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
-              {settled && (
-                <RunCostBadge
-                  cost={r.cost_usd}
-                  tokensIn={r.tokens_in}
-                  tokensOut={r.tokens_out}
-                  variant="detailed"
-                />
-              )}
-              {r.ran_at && <span>{new Date(r.ran_at).toLocaleTimeString()}</span>}
-            </div>
-            <button
-              type="button"
-              title={t("timeline.openTrace")}
-              aria-label={t("timeline.openTrace")}
-              onClick={() => onOpenTrace(r.run_id)}
-              style={iconBtnStyle}
-            >
-              <Icon.FileText size={13} />
-            </button>
-            {onDelete && r.status !== "running" && (
-              <span
-                role="button"
-                aria-label={t("timeline.deleteRun")}
-                title={t("timeline.deleteRun")}
-                onClick={() => onDelete(r.run_id)}
-                style={{ display: "inline-flex", padding: 3, borderRadius: 5, color: "var(--text-muted)", flexShrink: 0, cursor: "pointer" }}
-              >
-                <Icon.Trash size={13} />
-              </span>
-            )}
-          </div>
-        );
-      })}
+      {items.map((item) =>
+        item.kind === "commit" ? (
+          <CommitRow key={`commit:${item.commit.sha}`} commit={item.commit} />
+        ) : (
+          <RunRow
+            key={`run:${item.run.run_id}`}
+            run={item.run}
+            findingsByRunId={findingsByRunId}
+            repoFullName={repoFullName}
+            headSha={headSha}
+            onOpenTrace={onOpenTrace}
+            onGoToReview={onGoToReview}
+            onDelete={onDelete}
+          />
+        ),
+      )}
     </div>
   );
 }

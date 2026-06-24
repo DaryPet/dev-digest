@@ -10,13 +10,8 @@ import { Icon, Badge } from "@devdigest/ui";
 import type { ReviewRecord, Verdict, Severity } from "@devdigest/shared";
 import { FindingsPanel } from "../FindingsPanel";
 import { VerdictBanner } from "../VerdictBanner";
+import { VERDICT_META } from "../VerdictBanner/constants";
 import { useDeleteReview } from "../../../../../../../lib/hooks/reviews";
-
-const VERDICT_COLOR: Record<string, string> = {
-  request_changes: "var(--crit)",
-  comment: "var(--warn)",
-  approve: "var(--ok)",
-};
 
 function formatWhen(iso: string): string {
   const d = new Date(iso);
@@ -59,7 +54,7 @@ export function ReviewRunAccordion({
   const del = useDeleteReview(prId);
   const findings = review.findings;
   const blockers = findings.filter((f) => f.severity === "CRITICAL" && !f.dismissed_at).length;
-  const verdictColor = review.verdict ? VERDICT_COLOR[review.verdict] ?? "var(--text-muted)" : "var(--text-muted)";
+  const verdictColor = review.verdict ? VERDICT_META[review.verdict as Verdict]?.c ?? "var(--text-muted)" : "var(--text-muted)";
 
   return (
     <div

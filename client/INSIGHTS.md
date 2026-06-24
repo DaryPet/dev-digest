@@ -43,3 +43,16 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   `client/src/components/SeverityCounts/FindingsHoverCard.tsx`. file:line links
   use `githubBlobUrl(repoFullName, headSha, file, line)` (`lib/github-urls.ts`)
   — pin to the PR head sha so line numbers stay accurate.
+- **2026-06-24** — Severity/verdict colors must come from one source, not be
+  retyped per component: `FindingCard/constants.ts`,
+  `RunTraceDrawer/.../FindingsSection.tsx`, and `ReviewRunAccordion.tsx` each
+  had their own hand-typed `SEV_COLOR`/`VERDICT_COLOR` map instead of importing
+  `SEV` (from `@devdigest/ui`, same source `SeverityCounts` already uses) or
+  `VerdictBanner/constants.ts`'s `VERDICT_META`. Two had already drifted from
+  the canonical values — `FindingsSection.tsx` mapped `SUGGESTION` to
+  `var(--accent)` instead of `var(--sugg)`; `ReviewRunAccordion.tsx` mapped
+  verdict `comment` to `var(--warn)` instead of `var(--info)` — a real,
+  shipped visual inconsistency, not a hypothetical risk. Before adding any
+  severity- or verdict-colored UI, grep for
+  `SEV_COLOR`/`VERDICT_COLOR`/`VERDICT_META` first and import the existing
+  map; don't hand-roll a new `Record<Severity, string>`.
