@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { Icon, Badge, Button, SectionLabel, EmptyState } from "@devdigest/ui";
+import { Icon, Badge, Button, SectionLabel, EmptyState, SEV } from "@devdigest/ui";
 import { RunStatus } from "../RunStatus";
 import { RunHistory } from "../RunHistory/RunHistory";
 import { ReviewRunAccordion } from "../ReviewRunAccordion";
@@ -56,20 +56,6 @@ export function FindingsTab({
   const handleOpenFirstTrace = useCallback(() => {
     if (liveRunIds[0]) onOpenTrace(liveRunIds[0]);
   }, [liveRunIds, onOpenTrace]);
-
-  const handleOpenTrace = useCallback(
-    (id: string) => {
-      onOpenTrace(id);
-    },
-    [onOpenTrace],
-  );
-
-  const handleDelete = useCallback(
-    (id: string) => {
-      onDelete(id);
-    },
-    [onDelete],
-  );
 
   // Per-run findings, keyed by run_id — feeds the Timeline hover preview
   // (RunHistory). Sourced from the same `runs` data already fetched for the
@@ -131,9 +117,9 @@ export function FindingsTab({
 
       {lethalTrifecta.length > 0 && (
         <div style={s.lethalTrifecta}>
-          <Icon.Shield size={16} style={{ color: "var(--crit)" }} />
+          <Icon.Shield size={16} style={{ color: SEV.CRITICAL.c }} />
           <span style={s.lethalTrifectaTitle}>Lethal Trifecta detected</span>
-          <Badge color="var(--crit)" bg="transparent">
+          <Badge color={SEV.CRITICAL.c} bg="transparent">
             {lethalTrifecta.length} finding(s)
           </Badge>
         </div>
@@ -153,9 +139,9 @@ export function FindingsTab({
             findingsByRunId={findingsByRunId}
             repoFullName={repoFullName}
             headSha={headSha}
-            onOpenTrace={handleOpenTrace}
+            onOpenTrace={onOpenTrace}
             onGoToReview={handleGoToReview}
-            onDelete={handleDelete}
+            onDelete={onDelete}
           />
         </div>
       )}

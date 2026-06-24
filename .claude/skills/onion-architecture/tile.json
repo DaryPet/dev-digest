@@ -1,0 +1,11 @@
+{
+  "name": "devdigest/onion-architecture",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Forces the DevDigest backend Onion layering for new server modules: presentation (routes) → application (service) → domain → infrastructure (repository/adapters), with dependencies pointing inward only. Use when creating a new module under server/src/modules, deciding which layer a file/type/dependency belongs to, adding a new external integration (port + adapter), wiring the container, or reviewing a backend change for layering violations. Maps Fastify, Drizzle, Zod and the @devdigest/shared ports onto Onion layers and enforces the dependency rule with dependency-cruiser. Trigger terms: new module, onion architecture, layering, ports and adapters, repository, service, adapter, container, dependency rule, where does this go.",
+  "skills": {
+    "onion-architecture": {
+      "path": "SKILL.md"
+    }
+  }
+}
