@@ -41,6 +41,19 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   it is NOT denormalized onto `agent_runs` like `blockers`/`findings_count`. So
   there's no migration; the count reflects current (non-dismissed) findings.
 
+- **2026-06-24** — `POST /skills/import` (zip/markdown skill import) decodes
+  ZIP archives with a **hand-rolled central-directory reader +
+  `node:zlib.inflateRawSync`** (`server/src/modules/skills/import.ts`), not a
+  third-party zip library — `pnpm install` fails in this env
+  (`ERR_PNPM_IGNORED_BUILDS`, see Tooling Notes), so adding a new dependency
+  isn't viable here. Supports the two standard ZIP storage methods (stored +
+  raw deflate). Executable entries (`.sh`/`.js`/`.py`/etc., see
+  `EXECUTABLE_EXTENSIONS` in `constants.ts`) are matched by extension and
+  never decoded or persisted — only their names surface in `ignored_files` for
+  the import preview. If a real zip dependency becomes installable later, this
+  reader can be swapped, but the executable-skip behavior must be preserved
+  (it's the safety guarantee the import flow promises the user).
+
 ## Tooling Notes
 
 - **2026-06-20** — `pnpm typecheck`/`pnpm test` abort in this env on a dep
