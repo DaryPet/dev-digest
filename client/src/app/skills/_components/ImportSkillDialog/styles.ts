@@ -1,0 +1,51 @@
+import type { CSSProperties } from "react";
+
+/** Co-located styles for ImportSkillDialog. */
+export const s = {
+  body: { padding: 24, display: "flex", flexDirection: "column", gap: 4 } satisfies CSSProperties,
+  footer: { display: "flex", justifyContent: "flex-end", gap: 10 } satisfies CSSProperties,
+  fileRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: "10px 12px",
+    borderRadius: 7,
+    border: "1px dashed var(--border-strong)",
+    background: "var(--bg-elevated)",
+    marginBottom: 8,
+  } satisfies CSSProperties,
+  fileName: { fontSize: 13, color: "var(--text-secondary)" } satisfies CSSProperties,
+  trustBanner: {
+    display: "flex",
+    gap: 10,
+    padding: "12px 14px",
+    borderRadius: 8,
+    border: "1px solid var(--warn)",
+    background: "var(--warn-bg)",
+    marginBottom: 16,
+  } satisfies CSSProperties,
+  trustIcon: { color: "var(--warn)", flexShrink: 0, marginTop: 1 } satisfies CSSProperties,
+  trustTitle: { fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 3 } satisfies CSSProperties,
+  trustBody: { fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 } satisfies CSSProperties,
+  noticeBlock: {
+    fontSize: 12.5,
+    color: "var(--text-secondary)",
+    background: "var(--bg-hover)",
+    border: "1px solid var(--border)",
+    borderRadius: 7,
+    padding: "10px 12px",
+    marginBottom: 14,
+    lineHeight: 1.5,
+  } satisfies CSSProperties,
+  noticeTitle: { fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 } satisfies CSSProperties,
+  bodyPreview: {
+    border: "1px solid var(--border)",
+    borderRadius: 7,
+    background: "var(--bg-surface)",
+    padding: "12px 14px",
+    maxHeight: 220,
+    overflow: "auto",
+    fontSize: 13,
+  } satisfies CSSProperties,
+  sectionTitle: { fontSize: 13, fontWeight: 700, color: "var(--text-primary)", margin: "4px 0 10px" } satisfies CSSProperties,
+} as const;

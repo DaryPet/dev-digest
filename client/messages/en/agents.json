@@ -14,7 +14,9 @@
     "loadError": "Could not load agents.",
     "emptyTitle": "No agents yet",
     "emptyBody": "An agent is a configured reviewer — a model, a prompt, and the skills it uses. Create one to start reviewing.",
-    "emptyCta": "Create your first agent"
+    "emptyCta": "Create your first agent",
+    "selectTitle": "Select an agent",
+    "selectBody": "Pick an agent on the left to configure it."
   },
   "create": {
     "title": "Create agent",
@@ -91,7 +93,11 @@
     "title": "Skills",
     "enabledCount": "{linked} of {total} enabled",
     "filterPlaceholder": "Filter skills…",
-    "orderHint": "Order matters — earlier skills appear earlier in the assembled prompt. Toggle to attach."
+    "orderHint": "Order matters — earlier skills appear earlier in the assembled prompt. Drag to reorder.",
+    "addSkill": "Add skill",
+    "remove": "Remove",
+    "moveUp": "Move up",
+    "moveDown": "Move down"
   },
   "mount": {
     "body": "Mount point for {owner}. The Agent Editor shell + tab routing are wired by A2 — {owner} renders this tab."

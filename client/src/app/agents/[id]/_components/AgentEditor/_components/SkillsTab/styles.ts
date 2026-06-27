@@ -1,0 +1,51 @@
+import type { CSSProperties } from "react";
+
+/** Co-located styles for SkillsTab — compact, draggable catalog rows. */
+export const s = {
+  wrap: { maxWidth: 920 } satisfies CSSProperties,
+  header: { display: "flex", alignItems: "center", gap: 14, marginBottom: 6 } satisfies CSSProperties,
+  titleRow: { display: "flex", alignItems: "center", gap: 10, flex: 1 } satisfies CSSProperties,
+  h2: { fontSize: 18, fontWeight: 700 } satisfies CSSProperties,
+  countPill: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "var(--accent)",
+    background: "var(--accent-bg)",
+    padding: "2px 9px",
+    borderRadius: 999,
+  } satisfies CSSProperties,
+  filter: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "7px 10px",
+    borderRadius: 7,
+    border: "1px solid var(--border)",
+    background: "var(--bg-surface)",
+    width: 220,
+  } satisfies CSSProperties,
+  filterIcon: { color: "var(--text-muted)" } satisfies CSSProperties,
+  filterInput: {
+    flex: 1,
+    fontSize: 13,
+    background: "transparent",
+    border: "none",
+    outline: "none",
+    color: "var(--text-primary)",
+  } satisfies CSSProperties,
+  hint: { fontSize: 13, color: "var(--text-secondary)", marginBottom: 16, lineHeight: 1.5 } satisfies CSSProperties,
+  list: { display: "flex", flexDirection: "column", gap: 8 } satisfies CSSProperties,
+  row: (checked: boolean, dragging: boolean): CSSProperties => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: "11px 14px",
+    borderRadius: 8,
+    border: "1px solid " + (checked ? "var(--border-strong)" : "var(--border)"),
+    background: checked ? "var(--bg-hover)" : "var(--bg-elevated)",
+    opacity: dragging ? 0.5 : 1,
+    cursor: "grab",
+  }),
+  grip: { display: "inline-flex", color: "var(--text-muted)", cursor: "grab", flexShrink: 0 } satisfies CSSProperties,
+  name: { fontSize: 14, fontWeight: 600, flex: 1, minWidth: 0, color: "var(--text-primary)" } satisfies CSSProperties,
+} as const;

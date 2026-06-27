@@ -1,0 +1,47 @@
+{
+  "editor": {
+    "loadErrorTitle": "Couldn’t load this skill",
+    "loadErrorBody": "The skill could not be loaded.",
+    "skillFallback": "Skill",
+    "tabs": {
+      "config": "Config",
+      "preview": "Preview",
+      "versions": "Versions",
+      "stats": "Stats"
+    }
+  },
+  "config": {
+    "title": "Configuration",
+    "enabled": "Enabled",
+    "name": "Name",
+    "description": "Description",
+    "descriptionHint": "The skill's directive interface — write it as an instruction the agent follows",
+    "type": "Type",
+    "body": "Skill body",
+    "bodyHint": "Markdown. Appended to the agent's prompt when this skill is linked and enabled.",
+    "save": "Save skill",
+    "saving": "Saving…",
+    "saved": "Saved (v{version})",
+    "savedToast": "Skill saved (v{version})"
+  },
+  "preview": {
+    "subtitle": "Rendered as it appears in the review agent's prompt.",
+    "empty": "This skill has no body yet."
+  },
+  "versions": {
+    "title": "Versions",
+    "current": "Current",
+    "restore": "Restore",
+    "restoring": "Restoring…",
+    "restoredToast": "Restored v{version} as a new version",
+    "empty": "No version history yet.",
+    "loadError": "Could not load version history."
+  },
+  "stats": {
+    "title": "Stats",
+    "usedBy": "Used by {count} agents",
+    "agentsTitle": "Agents using this skill",
+    "empty": "Not used by any agent yet.",
+    "loadError": "Could not load agent usage."
+  }
+}

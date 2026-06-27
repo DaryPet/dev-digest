@@ -56,3 +56,31 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   severity- or verdict-colored UI, grep for
   `SEV_COLOR`/`VERDICT_COLOR`/`VERDICT_META` first and import the existing
   map; don't hand-roll a new `Record<Severity, string>`.
+- **2026-06-24** — To base64-encode a `File`'s bytes (incl. binary, e.g. a
+  `.zip`) for a no-multipart JSON endpoint (`POST /skills/import` takes
+  `{filename, content_base64}`), use `FileReader.readAsDataURL` then strip the
+  prefix by finding the **first comma** (`result.indexOf(",")`), not a fixed
+  offset — the `data:<mime>;base64,` prefix length varies with the detected
+  mime type. `readAsArrayBuffer` + manual `btoa` works too but is more code
+  for the same result. Evidence: `client/src/app/skills/_components/ImportSkillDialog/helpers.ts`.
+- **2026-06-24** — No existing test renders `<AppShell>` directly — it pulls in
+  `CommandPalette`, `ShortcutsHelp`, and the shell-context/shortcuts hooks,
+  which is more than a component test needs. For a page-level component that
+  wraps its content in `AppShell` (e.g. `*ListView`), `vi.mock` the
+  `components/app-shell` module to a passthrough (`({children}) => <div>{children}</div>`)
+  rather than rendering the real thing. Evidence:
+  `client/src/app/skills/_components/SkillsListView/SkillsListView.test.tsx`.
+- **2026-06-27** — Agents/Skills are a **two-pane master-detail**, not a
+  centered card grid. The list view (`AgentsListView`/`SkillsListView`) is the
+  *left rail*, persistent on both the landing (`/agents`, `/skills`) and the
+  editor (`/agents/:id`, `/skills/:id`) — the right pane is the editor or a
+  "Select a…" `EmptyState`. The rail (header + `+ Add` dropdown + search +
+  active-highlighted cards) lives in **one shared component per domain**,
+  `_components/AgentsRail` / `_components/SkillsRail`, reused by both routes — do
+  not re-inline the list in `[id]/page.tsx`, and do not rebuild a `maxWidth`
+  centered grid for the landing (that was the original `specs/skills-lab-ui.md`
+  §1/§3 divergence). The empty-right copy was pre-seeded before the layout
+  existed: `skills.json` `page.selectPrompt.*`, `agents.json`
+  `list.selectTitle/selectBody`. Evidence:
+  `client/src/app/skills/_components/SkillsRail/SkillsRail.tsx`,
+  `client/src/app/agents/_components/AgentsRail/AgentsRail.tsx`.

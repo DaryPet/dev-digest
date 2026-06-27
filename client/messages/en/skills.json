@@ -3,9 +3,13 @@
     "crumbLab": "Skills Lab",
     "crumbSkills": "Skills",
     "heading": "Skills",
+    "subtitle": "Reusable, directive markdown rules linked to your review agents.",
     "addSkill": "Add Skill",
     "searchPlaceholder": "Search skills…",
     "loadError": "Could not load skills.",
+    "createOption": "Create from scratch",
+    "importOption": "Import from file",
+    "defaultName": "New Skill",
     "menu": {
       "fromFile": "Import from file",
       "fromUrl": "Import from URL",
@@ -13,7 +17,7 @@
     },
     "empty": {
       "title": "No skills yet",
-      "body": "Import a skill from a file, a URL, or the community catalog.",
+      "body": "Create a skill from scratch or import one from a file.",
       "cta": "Import from file"
     },
     "selectPrompt": {
@@ -97,5 +101,28 @@
     "bodyLabel": "Skill body (Markdown)",
     "bodyHint": "Saving a changed body creates a new immutable version.",
     "version": "v{version}"
+  },
+  "importDialog": {
+    "title": "Import a skill",
+    "subtitle": "Upload a Markdown file or a zip — parsed locally, nothing is saved until you confirm.",
+    "fileLabel": "File",
+    "fileHint": "Accepts .md, .markdown, or .zip.",
+    "choose": "Choose file…",
+    "parsing": "Parsing…",
+    "parseFailed": "Could not parse this file.",
+    "trustNoticeTitle": "Review before you trust it",
+    "trustNotice": "An imported skill is someone else's instructions injected into your agent's prompt. Review the body carefully before enabling it.",
+    "ignoredFilesTitle": "Executable files skipped — not stored or run",
+    "warningsTitle": "Warnings",
+    "previewTitle": "Draft preview",
+    "name": "Name",
+    "description": "Description",
+    "type": "Type",
+    "body": "Skill body (Markdown)",
+    "cancel": "Cancel",
+    "confirm": "Save skill",
+    "confirming": "Saving…",
+    "importFailed": "Import failed",
+    "importSuccess": "Imported \"{name}\"."
   }
 }

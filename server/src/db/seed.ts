@@ -6,7 +6,23 @@ import {
   GENERAL_REVIEWER_PROMPT,
   SECURITY_REVIEWER_PROMPT,
   PERFORMANCE_REVIEWER_PROMPT,
+
+
+  TEST_QUALITY_REVIEWER_PROMPT,
+  API_CONTRACT_REVIEWER_PROMPT,
 } from './seed-prompts.js';
+import {
+  PR_QUALITY_RUBRIC,
+  NO_THEN_CHAINS,
+  SECRET_LEAKAGE_GATE,
+  LETHAL_TRIFECTA,
+  TEST_COVERAGE_NUDGE,
+  UNCOVERED_BRANCHES,
+  EDGE_CASE_COVERAGE,
+  MOCK_OVERUSE_GATE,
+  PHANTOM_API_GATE_MARKDOWN,
+} from './seed-skills.js';
+import { parseSkillImport } from '../modules/skills/import.js';
 
 /** Default provider/model for the built-in reviewer agents. */
 const DEFAULT_PROVIDER = 'openrouter' as const;
@@ -175,7 +191,7 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     ]);
   }
 
-  // ---- built-in agents (the three starter presets) ----
+  // ---- built-in agents (starter presets + L-skills demo agents) ----
   // Prompt bodies live in ./seed-prompts.ts (mirrored in docs/agent-prompts/*.md).
   const seedAgents: Array<typeof t.agents.$inferInsert> = [
     {
@@ -211,13 +227,180 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       version: 1,
       createdBy: userId,
     },
+    {
+      workspaceId,
+      name: 'Test Quality Reviewer',
+      description: 'Checks test coverage: uncovered branches, missed corner cases, over-mocking, flaky-test smells.',
+      provider: DEFAULT_PROVIDER,
+      model: DEFAULT_MODEL,
+      systemPrompt: TEST_QUALITY_REVIEWER_PROMPT,
+      enabled: true,
+      version: 1,
+      createdBy: userId,
+    },
+    {
+      workspaceId,
+      name: 'API Contract Reviewer',
+      description: 'Catches breaking changes to route signatures and shared contracts before they ship.',
+      provider: DEFAULT_PROVIDER,
+      model: DEFAULT_MODEL,
+      systemPrompt: API_CONTRACT_REVIEWER_PROMPT,
+      enabled: true,
+      version: 1,
+      createdBy: userId,
+    },
   ];
+  const agentIdByName = new Map<string, string>();
   for (const a of seedAgents) {
     const [existing] = await db
       .select()
       .from(t.agents)
       .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, a.name)));
-    if (!existing) await db.insert(t.agents).values(a);
+    if (existing) {
+      agentIdByName.set(a.name, existing.id);
+    } else {
+      const [inserted] = await db.insert(t.agents).values(a).returning();
+      agentIdByName.set(a.name, inserted!.id);
+    }
+  }
+
+  // ---- skills (Skills Lab demo catalog) ----
+  // `phantom-api-gate` is run through the REAL import parser
+  // (server/src/modules/skills/import.ts) on a markdown fixture with
+  // frontmatter — not hand-typed with source: 'extracted' — so the actual
+  // import code path the UI's "Import from file" flow uses is exercised, per
+  // the course TЗ's "принаймні один заводимо через імпорт".
+  const phantomApiImport = parseSkillImport(
+    'phantom-api-gate.md',
+    Buffer.from(PHANTOM_API_GATE_MARKDOWN, 'utf8'),
+  );
+
+  const seedSkills: Array<{
+    name: string;
+    description: string;
+    type: 'rubric' | 'convention' | 'security' | 'custom';
+    source: 'manual' | 'imported_url' | 'extracted' | 'community';
+    body: string;
+  }> = [
+    {
+      name: 'pr-quality-rubric',
+      description: 'Rubric for evaluating overall PR quality across correctness, tests, and clarity.',
+      type: 'rubric',
+      source: 'manual',
+      body: PR_QUALITY_RUBRIC,
+    },
+    {
+      name: 'no-then-chains',
+      description: 'Flag .then()/.catch() chains; prefer async/await for readability and error handling.',
+      type: 'convention',
+      source: 'manual',
+      body: NO_THEN_CHAINS,
+    },
+    {
+      name: 'secret-leakage-gate',
+      description: 'Detects sk_live, service_role, and NEXT_PUBLIC_ keys committed in plaintext.',
+      type: 'security',
+      source: 'community',
+      body: SECRET_LEAKAGE_GATE,
+    },
+    {
+      name: 'lethal-trifecta',
+      description: 'Flags PRs combining private data access, untrusted input, and an exfiltration path.',
+      type: 'security',
+      source: 'community',
+      body: LETHAL_TRIFECTA,
+    },
+    {
+      name: phantomApiImport.draft.name,
+      description: phantomApiImport.draft.description,
+      type: phantomApiImport.draft.type,
+      source: phantomApiImport.draft.source,
+      body: phantomApiImport.draft.body,
+    },
+    {
+      name: 'test-coverage-nudge',
+      description: 'Nudge reviewers to flag changed code without tests for its failure and branch paths.',
+      type: 'rubric',
+      source: 'manual',
+      body: TEST_COVERAGE_NUDGE,
+    },
+    {
+      name: 'uncovered-branches',
+      description: 'Flag conditional branches with no corresponding test exercising the non-default path.',
+      type: 'rubric',
+      source: 'manual',
+      body: UNCOVERED_BRANCHES,
+    },
+    {
+      name: 'edge-case-coverage',
+      description: 'Check for missing edge-case tests: empty, null, boundary, and large inputs.',
+      type: 'rubric',
+      source: 'manual',
+      body: EDGE_CASE_COVERAGE,
+    },
+    {
+      name: 'mock-overuse-gate',
+      description: 'Detect excessive mocking that makes tests pass regardless of real behavior.',
+      type: 'custom',
+      source: 'manual',
+      body: MOCK_OVERUSE_GATE,
+    },
+  ];
+
+  // Which skills each agent links, in prompt-block order.
+  const agentSkillMap: Record<string, string[]> = {
+    'General Reviewer': ['pr-quality-rubric', 'no-then-chains'],
+    'Security Reviewer': ['secret-leakage-gate', 'lethal-trifecta'],
+    'API Contract Reviewer': ['phantom-api-gate'],
+    'Test Quality Reviewer': [
+      'test-coverage-nudge',
+      'uncovered-branches',
+      'edge-case-coverage',
+      'mock-overuse-gate',
+    ],
+  };
+
+  const skillIdByName = new Map<string, string>();
+  for (const sk of seedSkills) {
+    const [existing] = await db
+      .select()
+      .from(t.skills)
+      .where(and(eq(t.skills.workspaceId, workspaceId), eq(t.skills.name, sk.name)));
+    if (existing) {
+      skillIdByName.set(sk.name, existing.id);
+    } else {
+      const [inserted] = await db
+        .insert(t.skills)
+        .values({
+          workspaceId,
+          name: sk.name,
+          description: sk.description,
+          type: sk.type,
+          source: sk.source,
+          body: sk.body,
+          enabled: true,
+          version: 1,
+        })
+        .returning();
+      skillIdByName.set(sk.name, inserted!.id);
+      await db
+        .insert(t.skillVersions)
+        .values({ skillId: inserted!.id, version: 1, body: sk.body })
+        .onConflictDoNothing();
+    }
+  }
+
+  for (const [agentName, skillNames] of Object.entries(agentSkillMap)) {
+    const agentId = agentIdByName.get(agentName);
+    if (!agentId) continue;
+    for (let order = 0; order < skillNames.length; order++) {
+      const skillId = skillIdByName.get(skillNames[order]!);
+      if (!skillId) continue;
+      await db
+        .insert(t.agentSkills)
+        .values({ agentId, skillId, order })
+        .onConflictDoNothing();
+    }
   }
 
   return { workspaceId, userId };
