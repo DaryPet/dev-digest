@@ -1,0 +1,14 @@
+{
+  "name": "devdigest-marketplace",
+  "owner": {
+    "name": "DevDigest"
+  },
+  "plugins": [
+    {
+      "name": "api-contract-reviewer",
+      "source": "./plugins/api-contract-reviewer",
+      "description": "API Contract Reviewer skills (breaking-change, response-schema, semver-discipline, deprecation-policy) for reviewing PRs that change a public API contract.",
+      "version": "1.0.0"
+    }
+  ]
+}

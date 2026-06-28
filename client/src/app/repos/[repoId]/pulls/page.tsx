@@ -6,6 +6,7 @@ import React from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
+  Button,
   Skeleton,
   EmptyState,
   ErrorState,
@@ -26,6 +27,7 @@ const OPEN_STATUSES = new Set(["needs_review", "reviewed", "stale"]);
 
 export default function PullsPage() {
   const t = useTranslations("prReview");
+
   const params = useParams<{ repoId: string }>();
   const repoId = params.repoId;
   const search = useSearchParams();

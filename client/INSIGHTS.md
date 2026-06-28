@@ -84,3 +84,26 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   `list.selectTitle/selectBody`. Evidence:
   `client/src/app/skills/_components/SkillsRail/SkillsRail.tsx`,
   `client/src/app/agents/_components/AgentsRail/AgentsRail.tsx`.
+- **2026-06-28** — UI copy is next-intl namespace files
+  (`client/messages/en/<ns>.json`), one `useTranslations("<ns>")` per
+  component; some namespaces are **pre-seeded before the feature is built**
+  (e.g. `conventions.json` predated the conventions page). Component tests that
+  use translations wrap in
+  `<NextIntlClientProvider locale="en" messages={{ <ns>: json }}>` (import the
+  json directly) — mirror `ConfigTab.test.tsx`. Styling is CSS-in-JS
+  `styles.ts` objects using `var(--token)` CSS vars — **not Tailwind** (despite
+  the `react-best-practices` skill) — match the surrounding `s.*` pattern
+  (`pulls/styles.ts`).
+- **2026-06-28** — Form primitives live in `@devdigest/ui`: `FormField` wraps
+  `TextInput` / `Textarea` / `Toggle` / `SelectInput`. There is **no `Select`**
+  — use `SelectInput value/onChange options={[{value,label}]}`. `Modal` (kit)
+  takes `title/subtitle/onClose/footer/children`; `IconBtn` takes
+  `icon/label(required)/onClick`. `ConfigTab.tsx` is the canonical form
+  template (seed local state from the prop, reset on id change, save via
+  mutation + toast). Evidence:
+  `client/src/app/skills/[id]/_components/SkillEditor/_components/ConfigTab/ConfigTab.tsx`.
+- **2026-06-28** — `src/vendor/ui/nav.ts` **must be edited** to add new sidebar items — it is a project config file, not an external library. Add a `NavItemDef` to the correct `NavGroup` (`WORKSPACE` for repo-scoped pages, `SKILLS LAB` for lab features). `activeKeyFor` in `components/app-shell/helpers.ts` maps routes to nav keys and already handles `/conventions` → `"conventions"` — add the route mapping there if the new route isn't covered. The earlier note ("link from pulls page, do not add a nav entry") was wrong: the design screenshot shows Conventions in the sidebar, not a button. Evidence: `src/vendor/ui/nav.ts:33`, `components/app-shell/helpers.ts:31`.
+- **2026-06-28** — Page content inside `AppShell`/`AppFrame` has **no default padding** — `<main>` in `AppFrame.tsx` is bare (`flex: 1, overflow: auto`). Every new page must add its own `padding: "24px 32px 10px"` on the page header and `padding: "0 32px 44px"` on the content list/body — match `pulls/styles.ts` (`pageHeader`, `tableCard`). Without explicit padding all content sticks to the edges. Evidence: `src/app/repos/[repoId]/conventions/styles.ts`, `pulls/styles.ts:67`.
+  `githubBlobUrl(repoFullName, ref, file, start?, end?)` (`lib/github-urls.ts`)
+  builds evidence deep-links; pin `ref` to the repo's `default_branch` for
+  repo-level (non-PR) evidence.

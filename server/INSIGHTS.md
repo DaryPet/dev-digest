@@ -90,6 +90,9 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
 
 ## Recurring Errors & Fixes
 
+- **2026-06-28** — `conventions` feature slot was defaulted to `openai/gpt-5.4` — wrong for this project. The standard across ALL features is `openrouter` + `deepseek/deepseek-v4-flash` (see `server/src/db/seed.ts:29`, `platform.ts:49`). Any new feature slot added to `FEATURE_MODELS` in `vendor/shared/contracts/platform.ts` must use `defaultProvider: 'openrouter'`, `defaultModel: 'deepseek/deepseek-v4-flash'` unless there is a specific reason to differ. Using a provider whose key isn't configured causes a **`ConfigError` → 500** (see below).
+- **2026-06-28** — `ConfigError` (thrown by `container.llm(id)` when an API key is missing) extends `AppError` with `statusCode = 500` (`platform/errors.ts:39`). So a missing API key surfaces as a plain 500 — no descriptive body in the browser console. Diagnose by checking the server terminal for `ConfigError: <PROVIDER>_API_KEY is not configured`.
+
 - **2026-06-28** — `db:migrate` failing with Postgres **`42701`** ("column
   already exists") means the **shared dev DB drifted ahead of on-disk
   migrations** — typically a table was `drizzle-kit push`ed directly in a prior
