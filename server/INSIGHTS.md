@@ -53,6 +53,24 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   the import preview. If a real zip dependency becomes installable later, this
   reader can be swapped, but the executable-skip behavior must be preserved
   (it's the safety guarantee the import flow promises the user).
+- **2026-06-28** — A new system-LLM feature (the `conventions` module is the
+  first real consumer of `resolveFeatureModel`, `settings/feature-models.ts`)
+  wires the model as: `resolveFeatureModel(container, ws, '<slot>')` →
+  `(await container.llm(provider)).completeStructured({ schema, schemaName,
+  messages, temperature })`. Read repo files for prompt context AND for
+  code-side evidence verification through the **git port**,
+  `container.git.readFile({ owner, name }, path)`
+  (`adapters/git/simple-git.ts:129`) — never `fs` in a service.
+  `repoIntel.getConventionSamples` returns file PATHS only, not contents.
+  Evidence: `server/src/modules/conventions/service.ts`.
+- **2026-06-28** — `MockGitClient.readFile` returns `''` for an unknown path —
+  it does NOT throw (`src/adapters/mocks.ts:293`). So a service that drops a
+  candidate when "the file doesn't exist" won't see null in a unit/integration
+  test; an absent-file citation instead surfaces as line-out-of-range on empty
+  content. To exercise the drop path: seed
+  `new MockGitClient({ files: { 'p': contents } })` and cite a line greater than
+  the file's length. `MockLLMProvider({ structured })` validates the fixture
+  against the call's Zod schema, so the fixture must satisfy the real schema.
 
 ## Tooling Notes
 
@@ -62,3 +80,28 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   tsconfig.json`, `./node_modules/.bin/vitest run`. Pre-existing tsc errors in
   `reviewer-core`/`adapters/llm` (missing `openai`/`zod` modules, `unknown→T`)
   are env noise, unrelated to app code.
+- **2026-06-28** — `drizzle-kit generate` is INTERACTIVE when a column is
+  dropped while others are added (it asks "created or renamed from another
+  column?" per new column) and IGNORES piped stdin / heredocs. Drive it with a
+  pty via `expect`:
+  `expect -c 'spawn ./node_modules/.bin/drizzle-kit generate; expect { -re {created or renamed} { send "\r"; exp_continue } eof }'`
+  — Enter selects the default "create column". Confirm the new `.sql` landed in
+  `meta/_journal.json` afterward (see the 2026-06-20 journal note above).
+
+## Recurring Errors & Fixes
+
+- **2026-06-28** — `db:migrate` failing with Postgres **`42701`** ("column
+  already exists") means the **shared dev DB drifted ahead of on-disk
+  migrations** — typically a table was `drizzle-kit push`ed directly in a prior
+  session (e.g. `conventions` already had `category`/`status`/`created_at`
+  **plus an extra `scan_id`** and a `__drizzle_migrations` row with no matching
+  on-disk file), so the new migration's `ALTER … ADD COLUMN` re-adds existing
+  columns. Fix for an **empty** table: revert it to its pre-migration (`0000`)
+  shape via psql, then `./node_modules/.bin/tsx src/db/migrate.ts` applies the
+  new migration cleanly and records it. Prove the chain is deploy-safe on a
+  throwaway DB first:
+  `docker exec -i devdigest-postgres psql -U devdigest -d devdigest -c 'CREATE DATABASE devdigest_migtest'`
+  then `DATABASE_URL=postgres://devdigest:devdigest@localhost:5432/devdigest_migtest ./node_modules/.bin/tsx src/db/migrate.ts`.
+  Note: `docker exec` needs **`-i`** to receive a heredoc/SQL on stdin (without
+  it the SQL silently no-ops). Evidence:
+  `server/src/db/migrations/0011_typical_talos.sql`.
