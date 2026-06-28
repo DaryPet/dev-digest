@@ -1,0 +1,10 @@
+{
+  "name": "api-contract-reviewer",
+  "displayName": "API Contract Reviewer",
+  "version": "1.0.0",
+  "description": "Review skills that catch API-contract regressions in a PR: breaking changes, response-schema shifts, SemVer discipline, and deprecation policy.",
+  "author": {
+    "name": "DevDigest"
+  },
+  "keywords": ["api", "contract", "breaking-change", "semver", "review"]
+}
