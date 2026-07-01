@@ -73,6 +73,11 @@ export interface ReviewInput {
   prDescription?: string;
   /** Task framing line, e.g. "Review PR #482 …". */
   task?: string;
+  /**
+   * Machine-derived PR intent (DATA; the trusted scope rule is added by
+   * assemblePrompt). Empty/undefined → section omitted (no behavior change).
+   */
+  intent?: string;
   /** Override the structured-output retry budget. */
   maxRetries?: number;
   /** Override the map-reduce line threshold. */
@@ -136,6 +141,7 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     repoMap: input.repoMap,
     prDescription: input.prDescription,
     task: input.task,
+    intent: input.intent,
   };
 
   // Whole-diff assembly is the trace default; overwritten below for single-pass.

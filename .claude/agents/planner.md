@@ -167,6 +167,13 @@ If a section is genuinely empty, write `— none —` rather than deleting it.
    decision you can't make from the repo, ask 1–3 short clarifying questions in
    chat and wait for the answers. If the request is already clear, skip this and
    plan directly — don't ask just to ask.
+   - **Parallel vs sequential is always the developer's call, never assumed.**
+     If the decomposition would split same-surface (backend or ui) work into
+     multiple implementer tracks of comparable duration that don't really
+     unblock each other, ask explicitly before finalizing: run them in
+     parallel (faster, more total tokens — each track pays its own protocol
+     read + agent overhead) or merge/sequence them into fewer tracks (slower,
+     fewer tokens)? Do not pick a default silently.
 2. **Present in chat.** Output the full Development Plan in your message for the
    developer to read.
 3. **Ask for approval.** Explicitly ask whether the plan is good to go (and

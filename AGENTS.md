@@ -29,6 +29,20 @@ Always search the relevant package's `docs/`, `specs/`, and `INSIGHTS.md` for
 what the user asks about FIRST — these are curated and may already answer
 it — then read code.
 
+## Catalog and index files — never use an agent
+
+`README.md`, `INSIGHTS.md`, and `MEMORY.md` files are always edited directly
+by the orchestrator using `Edit`. Never spawn an agent just to add rows to a
+table, append to a Sources list, or update an index. These are mechanical
+edits — do them inline.
+
+## Before spawning a researcher agent
+
+Check `.claude/skills/README.md` first. If the topic is already covered by a
+skill (`react-testing-library`, `onion-architecture`, `fastify-best-practices`,
+etc.) — invoke that skill directly instead of launching a `researcher` agent.
+A researcher is only needed for topics not covered by any existing skill.
+
 ## Conventions (not obvious from code)
 
 - NOT a monorepo workspace — each package has its own `package.json`/lockfile;

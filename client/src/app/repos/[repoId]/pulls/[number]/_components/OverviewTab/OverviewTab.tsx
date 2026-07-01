@@ -2,15 +2,19 @@
 
 import React from "react";
 import { SectionLabel } from "@devdigest/ui";
+import { IntentCard } from "../IntentCard/IntentCard";
 import { s } from "./styles";
 
 interface OverviewTabProps {
   prBody: string | null | undefined;
+  prId: string | number;
 }
 
-export function OverviewTab({ prBody }: OverviewTabProps) {
+export function OverviewTab({ prBody, prId }: OverviewTabProps) {
   return (
     <>
+      <IntentCard prId={prId} />
+
       {prBody && (
         <section>
           <SectionLabel icon="MessageSquare">Description</SectionLabel>
