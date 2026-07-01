@@ -15,5 +15,8 @@
     "blame": "blame",
     "noHistory": "No history available for this line.",
     "noCommits": "No commits found for this line."
-  }
+  },
+  "inScope": "In scope",
+  "outOfScope": "Out of scope",
+  "recompute": "Recompute"
 }

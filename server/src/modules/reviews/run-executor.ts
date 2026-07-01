@@ -1,5 +1,5 @@
 import type { Container } from '../../platform/container.js';
-import type { Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
+import type { Intent, Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
 import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
 import { RunLogger } from '../../platform/run-logger.js';
 import * as schema from '../../db/schema.js';
@@ -33,6 +33,23 @@ export type RunOutcome = {
   grounding: string;
   raw: Review;
 };
+
+/**
+ * Format a stored `Intent` into the caller-facing DATA block for the prompt
+ * slot. No rule text here — the rule lives in `INTENT_RULE` inside
+ * `reviewer-core/src/prompt.ts`. Empty scope arrays render as "(none stated)".
+ */
+function buildIntentBlock(intent: Intent): string {
+  const inScope =
+    intent.in_scope.length > 0
+      ? intent.in_scope.map((s) => `- ${s}`).join('\n')
+      : '- (none stated)';
+  const outScope =
+    intent.out_of_scope.length > 0
+      ? intent.out_of_scope.map((s) => `- ${s}`).join('\n')
+      : '- (none stated)';
+  return `Summary: ${intent.intent}\nIn scope:\n${inScope}\nOut of scope:\n${outScope}`;
+}
 
 /**
  * Owns the background execution of queued agent runs (extracted from
@@ -105,6 +122,24 @@ export class ReviewRunExecutor {
     }
     runLog.info(`Diff ready — ${diff.files.length} changed file(s); starting ${jobs.length} agent run(s)`);
 
+    // Loads the stored PR intent once (shared pre-work across all agents).
+    // Best-effort: a failure to load intent must never block the review — it
+    // simply means the intent slot is omitted and the prompt is unchanged.
+    let intentBlock: string | undefined;
+    try {
+      const storedIntent = await this.repo.getIntent(pull.id);
+      if (storedIntent) {
+        intentBlock = buildIntentBlock(storedIntent);
+        runLog.info(
+          `Intent slot: present (${storedIntent.in_scope.length} in-scope, ${storedIntent.out_of_scope.length} out-of-scope)`,
+        );
+      }
+    } catch (err) {
+      runLog.info(
+        `Intent slot: failed to load — ${(err as Error).message}; review proceeds without intent`,
+      );
+    }
+
     for (const { agent, runId } of jobs) {
       const agentStart = Date.now();
       logger?.info(
@@ -112,7 +147,7 @@ export class ReviewRunExecutor {
         `review: agent "${agent.name}" started (${agent.provider}/${agent.model})`,
       );
       try {
-        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog);
+        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog, intentBlock);
         logger?.info(
           {
             runId,
@@ -144,6 +179,7 @@ export class ReviewRunExecutor {
     agent: AgentRow,
     runId: string,
     parentLog: RunLogger,
+    intentBlock?: string,
   ): Promise<RunOutcome> {
     const start = Date.now();
     // Narrow the fanned-out pre-work logger to THIS run; the shared diff/intent
@@ -211,6 +247,10 @@ export class ReviewRunExecutor {
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
         ...(skills.length > 0 ? { skills } : {}),
+        // Machine-derived intent (DATA block; trusted scope rule is added by
+        // assemblePrompt). Absent → section omitted; prompt is byte-identical
+        // to today's (no hard dependency on intent being computed).
+        ...(intentBlock ? { intent: intentBlock } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),

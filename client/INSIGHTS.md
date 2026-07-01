@@ -104,6 +104,23 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   `client/src/app/skills/[id]/_components/SkillEditor/_components/ConfigTab/ConfigTab.tsx`.
 - **2026-06-28** — `src/vendor/ui/nav.ts` **must be edited** to add new sidebar items — it is a project config file, not an external library. Add a `NavItemDef` to the correct `NavGroup` (`WORKSPACE` for repo-scoped pages, `SKILLS LAB` for lab features). `activeKeyFor` in `components/app-shell/helpers.ts` maps routes to nav keys and already handles `/conventions` → `"conventions"` — add the route mapping there if the new route isn't covered. The earlier note ("link from pulls page, do not add a nav entry") was wrong: the design screenshot shows Conventions in the sidebar, not a button. Evidence: `src/vendor/ui/nav.ts:33`, `components/app-shell/helpers.ts:31`.
 - **2026-06-28** — Page content inside `AppShell`/`AppFrame` has **no default padding** — `<main>` in `AppFrame.tsx` is bare (`flex: 1, overflow: auto`). Every new page must add its own `padding: "24px 32px 10px"` on the page header and `padding: "0 32px 44px"` on the content list/body — match `pulls/styles.ts` (`pageHeader`, `tableCard`). Without explicit padding all content sticks to the edges. Evidence: `src/app/repos/[repoId]/conventions/styles.ts`, `pulls/styles.ts:67`.
+- **2026-06-30** — `vitest run` CLI filters match as a **plain substring** of
+  the file path, not a regex you can rely on dot-matching bracket characters:
+  `vitest run "src/app/repos/.*IntentCard"` finds nothing because the `.` in
+  `.*` doesn't match the literal `[` in route folders like `[repoId]`/
+  `[number]`. Pass a plain substring instead, e.g. `vitest run "IntentCard"`.
+- **2026-06-30** — Mocking a TanStack Query hook in a component test
+  (`vi.mocked(useXyz).mockReturnValue(stub)`) requires `stub` to satisfy the
+  full `UseQueryResult`/`UseMutationResult` shape for `tsc` to accept it even
+  though the component only reads 2-3 fields — cast with
+  `stub as unknown as ReturnType<typeof useXyz>` rather than hand-filling every
+  TanStack Query field. Evidence: `_components/IntentCard/IntentCard.test.tsx`.
+- **2026-06-30** — `@devdigest/ui`'s `SectionLabel` has `marginBottom: 14`
+  baked in, which throws off a flex card-header row that also holds an action
+  button (e.g. a title + "Recompute" button side by side) — it's designed for
+  standalone use above a content block, not inline in a flex row. Use a plain
+  styled `<span>` for the title text in a title+action header instead.
+  Evidence: `_components/IntentCard/IntentCard.tsx`.
   `githubBlobUrl(repoFullName, ref, file, start?, end?)` (`lib/github-urls.ts`)
   builds evidence deep-links; pin `ref` to the repo's `default_branch` for
   repo-level (non-PR) evidence.
