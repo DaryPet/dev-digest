@@ -23,6 +23,20 @@ as editing a do-not-touch path.
    touched. If nothing substantial came up, write nothing — but the *check*
    itself is never optional.
 
+## Development TЗ — gated agent pipeline (mandatory)
+
+Every new development TЗ (feature, bug fix, refactoring, chore) goes through
+the `dev-workflow` skill — invoke it before starting the work (`/dev-workflow`
+also triggers it explicitly). It classifies the TЗ (type + size + surfaces),
+then asks ALL gate questions in ONE upfront batch — researcher? planner?
+implementation (team / single / inline)? architecture review? — each with a
+recommendation. The developer answers once, before any work starts; the
+pipeline then runs autonomously to the end with no re-asking mid-flight.
+Tests, insights, and docs are automatic. For trivial XS changes the batch
+collapses to one question — continue in plain chat or run the batch
+(developer decides; any subset of agents can result).
+Engineering insights and documentation update always, without asking.
+
 ## Before answering
 
 Always search the relevant package's `docs/`, `specs/`, and `INSIGHTS.md` for

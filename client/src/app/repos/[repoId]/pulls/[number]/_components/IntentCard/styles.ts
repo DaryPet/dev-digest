@@ -6,51 +6,64 @@ export const s = {
     border: "1px solid var(--border)",
     borderRadius: 8,
     background: "var(--bg-elevated)",
-    overflow: "hidden",
+    padding: "20px 24px 24px",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 18,
   } satisfies CSSProperties,
 
   cardHeader: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "14px 16px",
-    borderBottom: "1px solid var(--border)",
+    gap: 10,
+  } satisfies CSSProperties,
+
+  headerLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
   } satisfies CSSProperties,
 
   cardTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 700,
-    letterSpacing: "0.05em",
+    letterSpacing: "0.07em",
     textTransform: "uppercase" as const,
     color: "var(--text-muted)",
-  } satisfies CSSProperties,
-
-  cardBody: {
-    padding: "16px 16px 18px",
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: 16,
   } satisfies CSSProperties,
 
   summary: {
-    fontSize: 14,
-    lineHeight: 1.6,
-    color: "var(--text-secondary)",
+    margin: 0,
+    fontSize: 15,
+    fontStyle: "italic" as const,
+    lineHeight: 1.55,
+    color: "var(--text-primary)",
     whiteSpace: "pre-wrap" as const,
   } satisfies CSSProperties,
 
-  section: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: 8,
+  scopeGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 32,
   } satisfies CSSProperties,
 
-  sectionLabel: {
+  scopeCol: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 10,
+    minWidth: 0,
+  } satisfies CSSProperties,
+
+  scopeHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
     fontSize: 12,
     fontWeight: 700,
-    letterSpacing: "0.05em",
+    letterSpacing: "0.07em",
     textTransform: "uppercase" as const,
-    color: "var(--text-muted)",
+    color: "var(--text-secondary)",
   } satisfies CSSProperties,
 
   list: {
@@ -59,13 +72,13 @@ export const s = {
     padding: 0,
     display: "flex",
     flexDirection: "column" as const,
-    gap: 6,
+    gap: 8,
   } satisfies CSSProperties,
 
   listItem: {
     display: "flex",
     alignItems: "flex-start",
-    gap: 8,
+    gap: 10,
     fontSize: 14,
     color: "var(--text-secondary)",
     lineHeight: 1.5,
@@ -73,16 +86,12 @@ export const s = {
 
   bullet: {
     flexShrink: 0,
-    marginTop: 2,
-    width: 6,
-    height: 6,
-    borderRadius: "50%",
-    background: "var(--text-muted)",
-    display: "inline-block",
+    color: "var(--text-muted)",
+    lineHeight: 1.5,
   } satisfies CSSProperties,
 
   emptyState: {
-    padding: "24px 16px",
+    padding: "10px 0 4px",
     textAlign: "center" as const,
     display: "flex",
     flexDirection: "column" as const,

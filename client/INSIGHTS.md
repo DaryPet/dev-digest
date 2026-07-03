@@ -124,3 +124,38 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   `githubBlobUrl(repoFullName, ref, file, start?, end?)` (`lib/github-urls.ts`)
   builds evidence deep-links; pin `ref` to the repo's `default_branch` for
   repo-level (non-PR) evidence.
+- **2026-07-02** — To render text wrapped in visible quotation marks (design
+  shows a quoted summary) without breaking RTL `getByText("<exact text>")`
+  assertions, use the `<q>` element: its quotes come from CSS-generated
+  content (`::before`/`::after`), so they never enter `textContent`. Literal
+  template quotes (`` `“${text}”` ``) put the quotes into the same text node
+  and make exact-string matches fail. Evidence:
+  `_components/IntentCard/IntentCard.tsx` (summary `<q>`), its unchanged
+  `getByText("Refactor the auth module to use JWT.")` test still passing.
+
+- **2026-07-02** — The persistent accent "box" around a just-clicked tab comes
+  from the vendored global `:focus-visible { outline: 2px solid var(--accent) }`
+  (`src/vendor/ui/styles.css:214`) landing on the bare `<button>` in vendor
+  `kit/Tabs.tsx` — the button keeps focus after the click-driven
+  `router.replace` re-render. Vendor-safe fix (vendor is do-not-touch): wrap
+  `<Tabs>` in a `<div onMouseDownCapture={e => { if (target closest button)
+  e.preventDefault(); }}>` so pointer clicks never give the button focus
+  (keyboard Tab/Enter unaffected → a11y ring preserved), plus app-level
+  `button:focus:not(:focus-visible) { outline: none }` in `globals.css`.
+  Evidence: `_components/PrDetailHeader/PrDetailHeader.tsx`,
+  `src/app/globals.css`.
+
+## Decisions
+
+- **2026-07-02** — The PR Overview tab is laid out 1:1 per the design mock
+  (PR BRIEF verdict card on top → two-column Intent | Blast-radius row →
+  Description), but panels whose backend doesn't exist yet (Blast radius,
+  Risk areas inside the intent card, Prior-PRs bar) render **honest
+  empty-states in the mock's styling — never fabricated/static data**
+  (user-approved choice over pixel-perfect fake content). When a later lesson
+  ships those backends, replace the empty-state bodies in
+  `_components/BlastRadiusCard/` and the Risk-areas section of
+  `_components/IntentCard/` — the layout slots are already in place.
+  PR BRIEF reuses `VerdictBanner` (now takes optional `cost`/`tokensIn`/
+  `tokensOut` rendered via `RunCostBadge` under the score ring) fed by
+  `usePrReviews` + `usePrRuns` (cached, no new endpoint).

@@ -18,5 +18,9 @@
   },
   "inScope": "In scope",
   "outOfScope": "Out of scope",
-  "recompute": "Recompute"
+  "recompute": "Recompute",
+  "prBrief": "PR brief",
+  "riskAreas": "Risk areas",
+  "noBlast": "Blast radius has not been computed for this PR yet.",
+  "priorPrs": "Prior PRs touching these files"
 }

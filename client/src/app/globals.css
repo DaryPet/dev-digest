@@ -4,6 +4,16 @@
    web fonts. */
 @import "../vendor/ui/styles.css";
 
+/* Belt-and-suspenders: suppress the :focus-visible outline on buttons that
+   received focus via mouse click. The vendor global :focus-visible rule can
+   engage for pointer interactions on some browsers even when the primary fix
+   (onMouseDownCapture e.preventDefault in PrDetailHeader) is in place.
+   Keyboard users still see the focus ring because :focus-visible is absent
+   when the button is focused by Tab / Enter / Space. */
+button:focus:not(:focus-visible) {
+  outline: none;
+}
+
 @font-face {
   font-family: "Inter";
   font-style: normal;

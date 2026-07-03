@@ -108,16 +108,26 @@ export function PrDetailHeader({
           </span>
         </div>
       )}
-      <Tabs
-        value={tab}
-        onChange={onSetTab}
-        pad="0"
-        tabs={[
-          { key: "overview", label: "Overview", icon: "FileText" },
-          { key: "findings", label: "Agent runs", icon: "AlertOctagon", count: findingsCount || undefined },
-          { key: "diff", label: "Files changed", icon: "Code", count: pr.files_count },
-        ]}
-      />
+      {/* onMouseDownCapture: prevent the tab button from taking focus on mouse
+          click so the vendor :focus-visible outline never shows for pointer
+          users. Keyboard activation (Tab + Enter/Space) is unaffected — the
+          real focus-visible ring stays for keyboard users (WCAG). */}
+      <div
+        onMouseDownCapture={(e) => {
+          if ((e.target as HTMLElement).closest("button")) e.preventDefault();
+        }}
+      >
+        <Tabs
+          value={tab}
+          onChange={onSetTab}
+          pad="0"
+          tabs={[
+            { key: "overview", label: "Overview", icon: "FileText" },
+            { key: "findings", label: "Agent runs", icon: "AlertOctagon", count: findingsCount || undefined },
+            { key: "diff", label: "Files changed", icon: "Code", count: pr.files_count },
+          ]}
+        />
+      </div>
     </div>
   );
 }
