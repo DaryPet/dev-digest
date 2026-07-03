@@ -104,6 +104,58 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   `client/src/app/skills/[id]/_components/SkillEditor/_components/ConfigTab/ConfigTab.tsx`.
 - **2026-06-28** — `src/vendor/ui/nav.ts` **must be edited** to add new sidebar items — it is a project config file, not an external library. Add a `NavItemDef` to the correct `NavGroup` (`WORKSPACE` for repo-scoped pages, `SKILLS LAB` for lab features). `activeKeyFor` in `components/app-shell/helpers.ts` maps routes to nav keys and already handles `/conventions` → `"conventions"` — add the route mapping there if the new route isn't covered. The earlier note ("link from pulls page, do not add a nav entry") was wrong: the design screenshot shows Conventions in the sidebar, not a button. Evidence: `src/vendor/ui/nav.ts:33`, `components/app-shell/helpers.ts:31`.
 - **2026-06-28** — Page content inside `AppShell`/`AppFrame` has **no default padding** — `<main>` in `AppFrame.tsx` is bare (`flex: 1, overflow: auto`). Every new page must add its own `padding: "24px 32px 10px"` on the page header and `padding: "0 32px 44px"` on the content list/body — match `pulls/styles.ts` (`pageHeader`, `tableCard`). Without explicit padding all content sticks to the edges. Evidence: `src/app/repos/[repoId]/conventions/styles.ts`, `pulls/styles.ts:67`.
+- **2026-06-30** — `vitest run` CLI filters match as a **plain substring** of
+  the file path, not a regex you can rely on dot-matching bracket characters:
+  `vitest run "src/app/repos/.*IntentCard"` finds nothing because the `.` in
+  `.*` doesn't match the literal `[` in route folders like `[repoId]`/
+  `[number]`. Pass a plain substring instead, e.g. `vitest run "IntentCard"`.
+- **2026-06-30** — Mocking a TanStack Query hook in a component test
+  (`vi.mocked(useXyz).mockReturnValue(stub)`) requires `stub` to satisfy the
+  full `UseQueryResult`/`UseMutationResult` shape for `tsc` to accept it even
+  though the component only reads 2-3 fields — cast with
+  `stub as unknown as ReturnType<typeof useXyz>` rather than hand-filling every
+  TanStack Query field. Evidence: `_components/IntentCard/IntentCard.test.tsx`.
+- **2026-06-30** — `@devdigest/ui`'s `SectionLabel` has `marginBottom: 14`
+  baked in, which throws off a flex card-header row that also holds an action
+  button (e.g. a title + "Recompute" button side by side) — it's designed for
+  standalone use above a content block, not inline in a flex row. Use a plain
+  styled `<span>` for the title text in a title+action header instead.
+  Evidence: `_components/IntentCard/IntentCard.tsx`.
   `githubBlobUrl(repoFullName, ref, file, start?, end?)` (`lib/github-urls.ts`)
   builds evidence deep-links; pin `ref` to the repo's `default_branch` for
   repo-level (non-PR) evidence.
+- **2026-07-02** — To render text wrapped in visible quotation marks (design
+  shows a quoted summary) without breaking RTL `getByText("<exact text>")`
+  assertions, use the `<q>` element: its quotes come from CSS-generated
+  content (`::before`/`::after`), so they never enter `textContent`. Literal
+  template quotes (`` `“${text}”` ``) put the quotes into the same text node
+  and make exact-string matches fail. Evidence:
+  `_components/IntentCard/IntentCard.tsx` (summary `<q>`), its unchanged
+  `getByText("Refactor the auth module to use JWT.")` test still passing.
+
+- **2026-07-02** — The persistent accent "box" around a just-clicked tab comes
+  from the vendored global `:focus-visible { outline: 2px solid var(--accent) }`
+  (`src/vendor/ui/styles.css:214`) landing on the bare `<button>` in vendor
+  `kit/Tabs.tsx` — the button keeps focus after the click-driven
+  `router.replace` re-render. Vendor-safe fix (vendor is do-not-touch): wrap
+  `<Tabs>` in a `<div onMouseDownCapture={e => { if (target closest button)
+  e.preventDefault(); }}>` so pointer clicks never give the button focus
+  (keyboard Tab/Enter unaffected → a11y ring preserved), plus app-level
+  `button:focus:not(:focus-visible) { outline: none }` in `globals.css`.
+  Evidence: `_components/PrDetailHeader/PrDetailHeader.tsx`,
+  `src/app/globals.css`.
+
+## Decisions
+
+- **2026-07-02** — The PR Overview tab is laid out 1:1 per the design mock
+  (PR BRIEF verdict card on top → two-column Intent | Blast-radius row →
+  Description), but panels whose backend doesn't exist yet (Blast radius,
+  Risk areas inside the intent card, Prior-PRs bar) render **honest
+  empty-states in the mock's styling — never fabricated/static data**
+  (user-approved choice over pixel-perfect fake content). When a later lesson
+  ships those backends, replace the empty-state bodies in
+  `_components/BlastRadiusCard/` and the Risk-areas section of
+  `_components/IntentCard/` — the layout slots are already in place.
+  PR BRIEF reuses `VerdictBanner` (now takes optional `cost`/`tokensIn`/
+  `tokensOut` rendered via `RunCostBadge` under the score ring) fed by
+  `usePrReviews` + `usePrRuns` (cached, no new endpoint).

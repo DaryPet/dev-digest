@@ -15,5 +15,12 @@
     "blame": "blame",
     "noHistory": "No history available for this line.",
     "noCommits": "No commits found for this line."
-  }
+  },
+  "inScope": "In scope",
+  "outOfScope": "Out of scope",
+  "recompute": "Recompute",
+  "prBrief": "PR brief",
+  "riskAreas": "Risk areas",
+  "noBlast": "Blast radius has not been computed for this PR yet.",
+  "priorPrs": "Prior PRs touching these files"
 }

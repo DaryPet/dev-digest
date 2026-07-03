@@ -1,22 +1,33 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { SectionLabel } from "@devdigest/ui";
+import { IntentCard } from "../IntentCard/IntentCard";
+import { PrBriefCard } from "../PrBriefCard";
+import { BlastRadiusCard } from "../BlastRadiusCard";
 import { s } from "./styles";
 
 interface OverviewTabProps {
-  prBody: string | null | undefined;
+  prId: string | number;
 }
 
-export function OverviewTab({ prBody }: OverviewTabProps) {
+/** Overview tab layout per the PR-page design: PR BRIEF verdict card on top,
+ *  then a two-column row — Intent card (left) and Blast radius / prior-PRs
+ *  column (right). The Description section has been removed per the mock. */
+export function OverviewTab({ prId }: OverviewTabProps) {
+  const t = useTranslations("brief");
   return (
     <>
-      {prBody && (
-        <section>
-          <SectionLabel icon="MessageSquare">Description</SectionLabel>
-          <div style={s.descriptionBox}>{prBody}</div>
-        </section>
-      )}
+      <section>
+        <SectionLabel icon="FileText">{t("prBrief")}</SectionLabel>
+        <PrBriefCard prId={prId} />
+      </section>
+
+      <div style={s.briefGrid}>
+        <IntentCard prId={prId} />
+        <BlastRadiusCard />
+      </div>
     </>
   );
 }

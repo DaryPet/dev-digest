@@ -72,6 +72,23 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   the file's length. `MockLLMProvider({ structured })` validates the fixture
   against the call's Zod schema, so the fixture must satisfy the real schema.
 
+- **2026-06-30** — `resolveFeatureModel` → `completeStructured` now has a
+  second real consumer beyond `conventions`: the `intent` module
+  (`server/src/modules/intent/service.ts`, feature slot `review_intent`)
+  confirms the pattern generalizes to any "system-LLM feature with internal-only
+  sourcing". Template for the next such feature: same-repo linked issue via the
+  existing GitHub adapter (`resolveLinkedIssue`/`getIssue`,
+  `adapters/github/octokit.ts`), an in-repo file referenced by path via the git
+  port (capped count, silently drop empty/unknown paths — see the
+  `MockGitClient.readFile` note above), and explicitly **no fetching of
+  external URLs** found in free text (PR body/issue body) — leave them as
+  plain text in the prompt. Evidence: `server/src/modules/intent/service.ts`.
+- **2026-06-30** — A path-extraction regex over free-form PR-body prose (e.g.
+  `extractSpecPaths` in `server/src/modules/intent/helpers.ts`, used to find an
+  in-repo spec file referenced by path) greedily captures trailing
+  sentence-punctuation (`specs/foo.md.` at the end of a sentence). Strip it
+  after matching: `.replace(/[.,;:!?)'"\]}>]+$/, '')` per match.
+
 ## Tooling Notes
 
 - **2026-06-20** — `pnpm typecheck`/`pnpm test` abort in this env on a dep
@@ -89,6 +106,19 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   `meta/_journal.json` afterward (see the 2026-06-20 journal note above).
 
 ## Recurring Errors & Fixes
+
+- **2026-06-30** — The `Edit` tool can corrupt a TypeScript file when the
+  edit target is near existing non-ASCII characters (e.g. the `·` middle dot
+  or a curly apostrophe `'`/U+2019): it can silently convert ASCII straight
+  single-quote string delimiters (U+0027) into Unicode smart quotes
+  (U+2018/U+2019), producing `TS1127 "Invalid character"` and cascading tsc
+  failures. Hit while changing `FEATURE_MODELS` entries in
+  `server/src/vendor/shared/contracts/platform.ts` — several entries in that
+  file (`'PR Review · Intent'`, curly-apostrophe descriptions) carry non-ASCII
+  text, so this will recur on future edits there. Workaround: for files with
+  embedded non-ASCII literals near the edit target, do a byte-safe replacement
+  (e.g. a one-off Python `content.replace(old_bytes, new_bytes)`) instead of
+  the `Edit` tool, then verify with `tsc --noEmit`.
 
 - **2026-06-28** — `conventions` feature slot was defaulted to `openai/gpt-5.4` — wrong for this project. The standard across ALL features is `openrouter` + `deepseek/deepseek-v4-flash` (see `server/src/db/seed.ts:29`, `platform.ts:49`). Any new feature slot added to `FEATURE_MODELS` in `vendor/shared/contracts/platform.ts` must use `defaultProvider: 'openrouter'`, `defaultModel: 'deepseek/deepseek-v4-flash'` unless there is a specific reason to differ. Using a provider whose key isn't configured causes a **`ConfigError` → 500** (see below).
 - **2026-06-28** — `ConfigError` (thrown by `container.llm(id)` when an API key is missing) extends `AppError` with `statusCode = 500` (`platform/errors.ts:39`). So a missing API key surfaces as a plain 500 — no descriptive body in the browser console. Diagnose by checking the server terminal for `ConfigError: <PROVIDER>_API_KEY is not configured`.
