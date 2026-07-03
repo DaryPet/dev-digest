@@ -88,6 +88,27 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   in-repo spec file referenced by path) greedily captures trailing
   sentence-punctuation (`specs/foo.md.` at the end of a sentence). Strip it
   after matching: `.replace(/[.,;:!?)'"\]}>]+$/, '')` per match.
+- **2026-07-03** — `completeAgentRun` (`reviews/repository/run.repo.ts:166`)
+  must guard its `UPDATE` on `status = 'running'` (same pattern as the
+  sibling `cancelRunIfRunning`), otherwise it silently overwrites an
+  already-terminal row. Cause: `cancelRun` (`reviews/service.ts:85`) marks a
+  row `cancelled` and completes the run bus immediately, but the orphaned
+  `runOneAgent` promise (`run-executor.ts`) keeps awaiting the LLM call in
+  the background — for `single-pass` (the project default,
+  `reviews/constants.ts`) there is no cancellation checkpoint once the call
+  has started (`checkCancelled()` in `reviewer-core/src/review/run.ts:170`
+  only runs between chunks, and single-pass is exactly one chunk). When the
+  orphaned call eventually errors on its own (observed: `ECONNRESET` ~36 min
+  later, plausibly a suspended laptop), its catch block used to overwrite
+  the row to `failed`, making a cancelled run look like a crash. Checking
+  `runBus.isCancelled(runId)` in that catch block does NOT fix it —
+  `RunBus.complete()` (`platform/sse.ts`) deletes the runId from the
+  `cancelled` Set before the orphaned call's catch ever runs, so the
+  in-memory flag is already gone; only a DB-level status guard is race-proof.
+  Actually aborting the wasted in-flight request (not just hiding the
+  symptom) needs `AbortSignal` propagated through
+  `reviewer-core`'s `LLMProvider`/`OpenRouterProvider` — deliberately out of
+  scope here, planned at `todo/abort-signal-cancellation.md`.
 
 ## Tooling Notes
 

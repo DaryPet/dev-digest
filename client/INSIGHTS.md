@@ -145,6 +145,27 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   Evidence: `_components/PrDetailHeader/PrDetailHeader.tsx`,
   `src/app/globals.css`.
 
+- **2026-07-03** — `position: fixed` (used by `FindingsHoverCard` to escape
+  an ancestor's `overflow: hidden`, see the 2026-06-20 entry above) removes
+  ancestor clipping but does NOT protect against the viewport edge or a
+  child's intrinsic width — those are separate failure modes that need
+  separate fixes. Viewport-bottom overflow: compute
+  `maxHeight = window.innerHeight - top - 12` in the position-calculating
+  handler and set `overflowY: "auto"` on the card (plus `position: "sticky"`
+  on its header so it stays visible while scrolling) — otherwise a card with
+  many items silently runs off the bottom of the screen with no way to
+  reach the rest (page scroll can't move a `position: fixed` element).
+  Intra-card horizontal overflow: a `display:flex` row with no
+  `minWidth: 0`/`overflow: hidden` on its children lets an unbroken long
+  string (e.g. a Next.js dynamic-route file path with no spaces) render at
+  full content width and burst past the card's own border — flex items
+  default to `min-width: auto`. Fix: `flex: 1, minWidth: 0, overflow:
+  hidden, textOverflow: "ellipsis", whiteSpace: "nowrap"` on the text
+  element (mirror `RunHistory.tsx`'s `commitMessageStyle`), `flexShrink: 0`
+  on any sibling badge that must stay fully visible, and a `title` attr for
+  the untruncated value on hover. Evidence:
+  `components/SeverityCounts/FindingsHoverCard.tsx`.
+
 ## Decisions
 
 - **2026-07-02** — The PR Overview tab is laid out 1:1 per the design mock
