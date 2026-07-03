@@ -166,6 +166,38 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   the untruncated value on hover. Evidence:
   `components/SeverityCounts/FindingsHoverCard.tsx`.
 
+- **2026-07-03** — `SmartDiff.groups[].files[].finding_lines` (contract in
+  `@devdigest/shared`) holds the actual line **numbers**, not a count — the
+  findings badge text (`t("findings", {count: finding_lines.length})`) and the
+  in-group file sort both derive from `finding_lines.length`. A test fixture
+  with e.g. `finding_lines: [5]` renders a "1 findings" badge, not "5 findings"
+  — the `5` is a line number, so the array needs one element per finding to
+  hit a given badge count. Hit writing `SmartDiffViewer.test.tsx`'s
+  `SMART_DIFF_STUB`, which had conflated the two. Evidence:
+  `_components/SmartDiffViewer/SmartDiffViewer.tsx`,
+  `_components/SmartDiffViewer/SmartDiffViewer.test.tsx`.
+- **2026-07-03** — `diff-viewer`'s public surface (`components/diff-viewer/index.ts`)
+  was narrower than what a second consumer actually needed: it exported only
+  `DiffViewer`/`DiffCommentApi`, so `SmartDiffViewer` (which renders its own
+  diff lines to anchor "N findings" badges — see `specs/smart-diff.md` §11)
+  had to deep-import `parsePatch`/`Line` from `diff-viewer/helpers.ts`,
+  flagged by `architecture-reviewer` as a boundary violation. Fixed by
+  promoting `parsePatch`/`Line` to `diff-viewer/index.ts`'s exports — they're
+  pure and stable enough to be public. Before deep-importing from a
+  `components/*` group's internal file, check whether the needed primitive
+  should just be added to that group's `index.ts` instead. Evidence:
+  `components/diff-viewer/index.ts`, `_components/SmartDiffViewer/SmartDiffViewer.tsx`.
+- **2026-07-03** — `SmartDiffViewer`'s "N findings" badge originally hardcoded
+  `color: "var(--warn)"`/`background: "var(--warn-bg)"` in `styles.ts` instead
+  of importing `SEV` from `@devdigest/ui` — a repeat of the exact antipattern
+  already logged on 2026-06-24 (hand-rolled severity colors drifting from the
+  canonical map). Caught by `plan-verifier` against `specs/smart-diff.md` §7,
+  fixed to `SEV.WARNING.c`/`SEV.WARNING.bg`. Before adding ANY warn/crit/sugg-
+  colored UI, grep for `var(--warn)`/`var(--crit)`/`var(--sugg)` literals first
+  — the plan/task description saying "reuse SEV tokens" is not self-enforcing;
+  it has now been missed twice. Evidence:
+  `_components/SmartDiffViewer/styles.ts`.
+
 ## Decisions
 
 - **2026-07-02** — The PR Overview tab is laid out 1:1 per the design mock

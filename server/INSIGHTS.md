@@ -110,6 +110,21 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   `reviewer-core`'s `LLMProvider`/`OpenRouterProvider` — deliberately out of
   scope here, planned at `todo/abort-signal-cancellation.md`.
 
+- **2026-07-03** — `container.ts:70-72` added `reviewRepo`/`agentsRepo`
+  getters specifically so a cross-domain module can read another module's
+  data without `new XRepository(container.db)` reaching into that module's
+  folder — but both `intent/service.ts:30` and `smart-diff/service.ts:26`
+  bypass the accessor and construct `new ReviewRepository(container.db)`
+  directly anyway. Flagged by `architecture-reviewer` as a Major boundary
+  smell in isolation, but downgraded to informational here: it's the exact
+  pattern the plan for `smart-diff` explicitly froze (`specs/smart-diff.md`
+  §4, "Reused as-is via `new ReviewRepository(container.db)`... Not
+  modified"), it's already the precedent set by `intent`, and fixing only one
+  of the two would leave them inconsistent — by developer decision, left
+  as-is (not fixed this session). If a third cross-domain module repeats this,
+  treat it as a real cross-cutting cleanup (all three call sites switched to
+  `container.reviewRepo` together), not another one-off.
+
 ## Tooling Notes
 
 - **2026-06-20** — `pnpm typecheck`/`pnpm test` abort in this env on a dep
@@ -118,6 +133,16 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   tsconfig.json`, `./node_modules/.bin/vitest run`. Pre-existing tsc errors in
   `reviewer-core`/`adapters/llm` (missing `openai`/`zod` modules, `unknown→T`)
   are env noise, unrelated to app code.
+- **2026-07-03** — Nuance to the 2026-06-20/2026-06-24 "pnpm install fails on
+  `ERR_PNPM_IGNORED_BUILDS`" notes: `pnpm install --lockfile-only` **works** in
+  this env (build scripts never run, so the pre-check doesn't trigger). That's
+  enough to re-sync `pnpm-lock.yaml` after editing `package.json` specifiers
+  (e.g. pinning exact versions) — resolved versions stay put, only
+  `specifier:` lines change, plus pnpm v11 adds harmless `libc:` metadata to
+  native optional deps. Actually *adding* a new package still needs a real
+  install and remains not viable here. Evidence: `client/pnpm-lock.yaml`
+  regenerated 2026-07-03.
+
 - **2026-06-28** — `drizzle-kit generate` is INTERACTIVE when a column is
   dropped while others are added (it asks "created or renamed from another
   column?" per new column) and IGNORES piped stdin / heredocs. Drive it with a
