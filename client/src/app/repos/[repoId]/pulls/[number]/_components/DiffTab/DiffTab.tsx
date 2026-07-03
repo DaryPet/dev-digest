@@ -6,6 +6,7 @@ import { DiffViewer, type DiffCommentApi } from "@/components/diff-viewer";
 import { usePrComments, useCreatePrComment } from "@/lib/hooks/reviews";
 import { notify } from "@/lib/toast";
 import type { PrFile } from "@devdigest/shared";
+import { SmartDiffViewer, type SmartDiffOrder } from "../SmartDiffViewer";
 
 interface DiffTabProps {
   prId: string | null;
@@ -20,6 +21,8 @@ export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
   const create = useCreatePrComment(prId);
   // Comments start hidden so the diff is clean by default — toggle to reveal.
   const [showComments, setShowComments] = React.useState(false);
+  // Smart order (risk-grouped) vs Original order (flat commentable diff).
+  const [order, setOrder] = React.useState<SmartDiffOrder>("smart");
 
   const commentCount = comments?.length ?? 0;
 
@@ -42,24 +45,37 @@ export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
 
   return (
     <section>
-      <SectionLabel
-        icon="Code"
-        right={
-          commentCount > 0 ? (
-            <Button
-              kind="ghost"
-              size="sm"
-              icon={showComments ? "EyeOff" : "Eye"}
-              onClick={() => setShowComments((v) => !v)}
-            >
-              {showComments ? "Hide comments" : "Show comments"} ({commentCount})
-            </Button>
-          ) : undefined
-        }
-      >
-        Files changed · {filesCount} files
-      </SectionLabel>
-      <DiffViewer files={files} commenting={commenting} />
+      {/* Header + order toggle + (in smart mode) the risk-grouped diff. */}
+      <SmartDiffViewer
+        prId={prId}
+        files={files}
+        mode={order}
+        onModeChange={setOrder}
+      />
+
+      {/* Original order — the flat commentable diff, GitHub-style. */}
+      {order === "original" && (
+        <>
+          <SectionLabel
+            icon="Code"
+            right={
+              commentCount > 0 ? (
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  icon={showComments ? "EyeOff" : "Eye"}
+                  onClick={() => setShowComments((v) => !v)}
+                >
+                  {showComments ? "Hide comments" : "Show comments"} ({commentCount})
+                </Button>
+              ) : undefined
+            }
+          >
+            Files changed · {filesCount} files
+          </SectionLabel>
+          <DiffViewer files={files} commenting={commenting} />
+        </>
+      )}
     </section>
   );
 }

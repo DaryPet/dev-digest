@@ -1,0 +1,25 @@
+{
+  "title": "Smart diff",
+  "sectionLabel": "Reviewer-ordered diff",
+  "orderToggle": "Diff order",
+  "smartOrder": "Smart order",
+  "originalOrder": "Original order",
+  "filesSummary": "{count, plural, one {# file} other {# files}}",
+  "roles": {
+    "core": "Core logic",
+    "wiring": "Wiring",
+    "boilerplate": "Boilerplate"
+  },
+  "roleDescriptions": {
+    "core": "The substance of the change — review closely",
+    "wiring": "Hooks the core into the app",
+    "boilerplate": "Generated / mechanical — skim"
+  },
+  "fileCount": "{count, plural, one {# file} other {# files}}",
+  "emptyGroup": "No files in this category",
+  "findings": "{count} findings",
+  "noDiff": "No diff available",
+  "splitSuggestion": "This PR is too large to review in one pass",
+  "totalLines": "{total} lines changed",
+  "loading": "Loading smart diff…"
+}
