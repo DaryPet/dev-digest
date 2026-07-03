@@ -46,7 +46,9 @@ export function FindingsHoverCard({
   repoFullName?: string | null;
   headSha?: string | null;
 }) {
-  const [pos, setPos] = React.useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = React.useState<{ top: number; left: number; maxHeight: number } | null>(
+    null,
+  );
   const anchorRef = React.useRef<HTMLSpanElement | null>(null);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -68,7 +70,11 @@ export function FindingsHoverCard({
     if (!el) return;
     const r = el.getBoundingClientRect();
     const left = Math.min(r.left, window.innerWidth - CARD_WIDTH - 12);
-    setPos({ top: r.bottom + 6, left: Math.max(12, left) });
+    const top = r.bottom + 6;
+    // Clamp to the viewport instead of letting the card run off the bottom
+    // edge — scroll internally once content exceeds the remaining space.
+    const maxHeight = Math.max(160, window.innerHeight - top - 12);
+    setPos({ top, left: Math.max(12, left), maxHeight });
   };
   const scheduleClose = () => {
     cancelClose();
@@ -97,6 +103,8 @@ export function FindingsHoverCard({
               left: pos.left,
               zIndex: 1000,
               width: CARD_WIDTH,
+              maxHeight: pos.maxHeight,
+              overflowY: "auto",
               background: "var(--bg-elevated)",
               border: "1px solid var(--border)",
               borderRadius: 8,
@@ -106,6 +114,8 @@ export function FindingsHoverCard({
           >
             <div
               style={{
+                position: "sticky",
+                top: 0,
                 display: "flex",
                 alignItems: "center",
                 gap: 7,
@@ -115,6 +125,7 @@ export function FindingsHoverCard({
                 letterSpacing: "0.05em",
                 textTransform: "uppercase",
                 color: "var(--text-muted)",
+                background: "var(--bg-elevated)",
               }}
             >
               <Icon.AlertOctagon size={13} />
@@ -169,14 +180,37 @@ export function FindingsHoverCard({
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          style={{ color: "var(--accent-text)", textDecoration: "none" }}
+                          title={fileLabel}
+                          style={{
+                            color: "var(--accent-text)",
+                            textDecoration: "none",
+                            flex: 1,
+                            minWidth: 0,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
                         >
                           {fileLabel}
                         </a>
                       ) : (
-                        <span className="mono">{fileLabel}</span>
+                        <span
+                          className="mono"
+                          title={fileLabel}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {fileLabel}
+                        </span>
                       )}
-                      <span style={{ color: "var(--ok)" }}>● {Math.round(f.confidence * 100)}% conf</span>
+                      <span style={{ color: "var(--ok)", flexShrink: 0 }}>
+                        ● {Math.round(f.confidence * 100)}% conf
+                      </span>
                     </div>
                     {f.rationale && (
                       <div

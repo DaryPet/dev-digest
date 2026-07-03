@@ -183,6 +183,13 @@ export async function completeAgentRun(
     error?: string | null;
   },
 ): Promise<void> {
+  // Guarded on status='running' (same pattern as cancelRunIfRunning above): an
+  // orphaned run whose LLM call can't be aborted mid-flight (single-pass has
+  // no cancellation checkpoint once started, see todo/abort-signal-cancellation.md)
+  // may still resolve/reject AFTER cancelRunIfRunning already flipped the row to
+  // 'cancelled'. Without this guard that late completion silently overwrites
+  // 'cancelled' back to 'done'/'failed' — a run the user cancelled would appear
+  // to have crashed or succeeded. Once non-'running', the row is terminal.
   await db
     .update(t.agentRuns)
     .set({
@@ -197,7 +204,7 @@ export async function completeAgentRun(
       blockers: values.blockers ?? null,
       error: values.error ?? null,
     })
-    .where(eq(t.agentRuns.id, runId));
+    .where(and(eq(t.agentRuns.id, runId), eq(t.agentRuns.status, 'running')));
 }
 
 /** Persist the WHOLE run log as ONE document. PK = runId → agent_runs. */
