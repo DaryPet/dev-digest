@@ -125,6 +125,39 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   treat it as a real cross-cutting cleanup (all three call sites switched to
   `container.reviewRepo` together), not another one-off.
 
+- **2026-07-05** — SDK-isolation template for a "thin adapter over the domain"
+  module that wraps an external SDK (first used by the local MCP stdio server,
+  `server/src/mcp/`). Keep ALL runtime imports of the external SDK
+  (`@modelcontextprotocol/sdk`) in just the two presentation entry files
+  (`mcp/index.ts` = `StdioServerTransport`, `mcp/server.ts` = `McpServer`); the
+  application layer (`mcp/application/mcp-service.ts`) returns a **neutral
+  discriminated union** `McpResult<T> = {kind:'ok',data} | {kind:'error',...}`,
+  and the SDK's `CallToolResult` conversion is localized to the tool handlers
+  (`mcp/tools/*.ts` via `toolError`/`toolSuccess` in `mcp/errors.ts`). Tool
+  files pull the server type as `import type { McpServer }` and receive the
+  instance as a parameter, so even they are SDK-runtime-free. Payoff: every
+  logic file (application/infrastructure/helpers/schemas/errors) typechecks and
+  unit-tests **before** the real `pnpm install` of the SDK — critical because a
+  brand-new dep can't be installed in the sandbox (see Tooling Notes). Reuse
+  this split for any future external-SDK adapter.
+- **2026-07-05** — `db/rows.ts` re-exports most row shapes
+  (`AgentRow`/`FindingRow`/`PullRow`/`AgentRunRow`, etc.) so cross-cutting
+  consumers avoid importing another module's `repository.ts` — but it did NOT
+  export `ConventionRow`, so consumers of the conventions row shape either
+  duplicated `typeof t.conventions.$inferSelect` locally or reached into
+  `modules/conventions/repository.ts` (the exact cross-module drift `db/rows.ts`
+  exists to prevent; `architecture-reviewer` flagged it Minor). Added
+  `ConventionRow` to `db/rows.ts` this session. When adding a new
+  conventions-row consumer, import from `db/rows.js`, never the module.
+- **2026-07-05** — MCP unit-test patterns without a real DB
+  (`server/src/mcp/**/*.test.ts`): `McpService` takes an optional
+  `overrides?: { reviewService?, mcpRepo? }` constructor arg so tests inject
+  stubs while production falls through to `new ReviewService/McpRepository`;
+  stub a Drizzle table by keying its name off `Symbol.for('drizzle:Name')`;
+  `AuthProvider.currentWorkspace(req: unknown)` requires the arg even in no-auth
+  mode (pass `null`); `CallToolResult.content` is a union, so reading `.text`
+  in a test needs an `item.type === 'text'` guard first (else TS2339).
+
 ## Tooling Notes
 
 - **2026-06-20** — `pnpm typecheck`/`pnpm test` abort in this env on a dep
@@ -142,6 +175,21 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   native optional deps. Actually *adding* a new package still needs a real
   install and remains not viable here. Evidence: `client/pnpm-lock.yaml`
   regenerated 2026-07-03.
+
+- **2026-07-05** — Claude Code IGNORES the `cwd` field in `.mcp.json` and
+  launches stdio MCP servers from the repo root. Symptom: `/mcp` says
+  `Failed to reconnect to devdigest: -32000` while the same command works
+  fine when run manually from `server/`. Three cwd-dependent things break in
+  sequence: (1) a relative entry path in `args`, (2) tsx's tsconfig discovery —
+  without `server/tsconfig.json` the `@devdigest/shared` path alias fails with
+  `ERR_MODULE_NOT_FOUND` even when the entry path is absolute, (3)
+  `dotenv/config`, which loads `.env` from cwd (repo root has none). Fix, all
+  three in `.mcp.json`: absolute entry path, `--tsconfig
+  <abs>/server/tsconfig.json` in `args`, and
+  `DOTENV_CONFIG_PATH=<abs>/server/.env` in `env`. Verify with a manual
+  handshake: pipe `initialize` + `notifications/initialized` + `tools/list`
+  JSON-RPC lines into the exact command from the repo root. Evidence:
+  `.mcp.json`, `server/src/mcp/index.ts:11`.
 
 - **2026-06-28** — `drizzle-kit generate` is INTERACTIVE when a column is
   dropped while others are added (it asks "created or renamed from another

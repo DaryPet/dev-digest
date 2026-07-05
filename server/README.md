@@ -100,6 +100,9 @@ flowchart TB
 | `DEVDIGEST_CLONE_DIR` | `./clones` | imported-repo checkouts (git-ignored) |
 | `LOG_LEVEL` | `info` (`silent` in test) | pino level |
 | `NODE_ENV` | `development` | `test` → silent logs + global rate-limit disabled |
+| `MCP_WORKSPACE_ID` | current/default workspace | workspace context for the MCP server's tools |
+| `MCP_REPO` | — | `owner/name`; required by the MCP `get_conventions` tool |
+| `MCP_RUN_TIMEOUT_MS` | `300000` | max time `run_agent_on_pr` blocks before returning a runId to fetch later |
 
 Secrets (API keys, `GITHUB_TOKEN`) are **not** part of `AppConfig` — they go
 through `SecretsProvider` (`~/.devdigest/secrets.json`, mode `0600`, with
@@ -108,6 +111,25 @@ through `SecretsProvider` (`~/.devdigest/secrets.json`, mode `0600`, with
 Migrations are **not** applied on boot — run `pnpm db:migrate` (pgvector is
 enabled by migration `0000`). `pnpm db:seed` is idempotent demo data
 (`acme/payments-api`, PR #482, the two built-in agents).
+
+## MCP server (local, stdio)
+
+A local Model Context Protocol server lets external AI agents drive DevDigest's
+review engine. It runs as a **standalone stdio process** (its own entrypoint,
+not the HTTP app) — `stdout` is reserved for JSON-RPC, all logs go to `stderr`.
+
+- **Run:** `MCP_WORKSPACE_ID=<ws> MCP_REPO=owner/name pnpm mcp` (boots the DI
+  `Container`; requires the SDK installed via `pnpm install`).
+- **Code:** `src/mcp/` — SDK runtime lives only in `index.ts`/`server.ts`; all
+  tool logic is SDK-free (see `INSIGHTS.md`, the SDK-isolation note).
+- **Tools (5):** `list_agents` (configured agents + their ids), `run_agent_on_pr`
+  (`repo, pr, agent` — **blocks** create→wait→collect, returns `{runId, verdict,
+  findings[]}`; the only write tool), `get_findings` (`runId` → compact verdict +
+  findings), `get_conventions` (repo conventions, all statuses), `get_blast_radius`
+  (**stub** — `not_implemented`).
+- **Design:** result-not-operation, flat arguments, compact whitelisted outputs
+  (no `system_prompt`/`rationale`), and forward-leading errors (e.g. "agent not
+  found → call list_agents"). Spec: [`../specs/mcp-server.md`](../specs/mcp-server.md).
 
 ## Review context (non-obvious)
 

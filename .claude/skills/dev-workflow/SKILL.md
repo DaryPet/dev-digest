@@ -133,7 +133,12 @@ deferred):
 With all four answers in hand, run the pipeline straight through:
 
 1. Researcher (if yes) → distill findings.
-2. Planner (if yes) → present plan, get approval, save to `specs/<slug>.md`.
+2. Planner (if yes) → the planner does not hardcode a model, so by default it
+   inherits the orchestrator's (the powerful model) — keep that for **L /
+   complex** plans (cross-package, new contracts/modules). For a **small,
+   mechanical** plan (S, single package, no new contracts) downgrade to
+   **Sonnet** via the `model` param on the `Agent` call to save cost. Present
+   plan, get approval, save to `specs/<slug>.md`.
 3. Implementation per the Q3 answer (with the silent team→single fallback
    rule above if applicable).
 4. **Tests (automatic, no question):** if new testable behavior was
