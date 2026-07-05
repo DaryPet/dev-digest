@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "devdigest": {
+      "type": "stdio",
+      "command": "/Users/usuario/Desktop/GitHub/dev-digest-main/server/node_modules/.bin/tsx",
+      "args": [
+        "--tsconfig",
+        "/Users/usuario/Desktop/GitHub/dev-digest-main/server/tsconfig.json",
+        "/Users/usuario/Desktop/GitHub/dev-digest-main/server/src/mcp/index.ts"
+      ],
+      "env": {
+        "MCP_REPO": "burnjohn/dev-digest",
+        "DOTENV_CONFIG_PATH": "/Users/usuario/Desktop/GitHub/dev-digest-main/server/.env"
+      }
+    }
+  }
+}
