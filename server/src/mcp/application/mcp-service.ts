@@ -14,6 +14,8 @@
 import type { Container } from '../../platform/container.js';
 import { NotFoundError } from '../../platform/errors.js';
 import { ReviewService } from '../../modules/reviews/service.js';
+import { BlastService } from '../../modules/blast/service.js';
+import type { BlastResponse } from '../../modules/blast/schemas.js';
 import { McpRepository } from '../infrastructure/mcp.repository.js';
 import { waitForRun } from './wait-for-run.js';
 import { toMcpAgent, toMcpFinding, toMcpConvention } from '../helpers.js';
@@ -71,6 +73,14 @@ export interface IReviewService {
   runReview: ReviewService['runReview'];
 }
 
+/**
+ * Minimal interface of BlastService methods McpService actually calls.
+ * Defined here so tests can inject a stub without the full service.
+ */
+export interface IBlastService {
+  getBlast: BlastService['getBlast'];
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -78,6 +88,7 @@ export interface IReviewService {
 export class McpService {
   private reviewService: IReviewService;
   private mcpRepo: McpRepository;
+  private blastService: IBlastService;
 
   constructor(
     private container: Container,
@@ -85,10 +96,12 @@ export class McpService {
     overrides?: {
       reviewService?: IReviewService;
       mcpRepo?: McpRepository;
+      blastService?: IBlastService;
     },
   ) {
     this.reviewService = overrides?.reviewService ?? new ReviewService(container);
     this.mcpRepo = overrides?.mcpRepo ?? new McpRepository(container.db);
+    this.blastService = overrides?.blastService ?? new BlastService(container);
   }
 
   // -------------------------------------------------------------------------
@@ -234,6 +247,49 @@ export class McpService {
     const rows = await this.mcpRepo.conventionsByRepo(workspaceId, repo.id);
     const conventions = rows.map(toMcpConvention);
     return ok({ conventions });
+  }
+
+  // -------------------------------------------------------------------------
+  // get_blast_radius (zero LLM — pure index reads via BlastService)
+  // -------------------------------------------------------------------------
+
+  async getBlastRadius(
+    repoFullName: string,
+    prNumber: number,
+  ): Promise<McpResult<BlastResponse>> {
+    const workspaceId = await this.resolveWorkspaceId();
+
+    // 1. Resolve repo (exact same P4 wording as runAgentOnPr)
+    const repo = await this.mcpRepo.repoByFullName(workspaceId, repoFullName);
+    if (!repo) {
+      return err(
+        `repo "${repoFullName}" not found in this workspace`,
+        'add it in DevDigest, then retry',
+      );
+    }
+
+    // 2. Resolve PR (exact same P4 wording as runAgentOnPr)
+    const pr = await this.mcpRepo.prByRepoAndNumber(repo.id, prNumber);
+    if (!pr) {
+      return err(
+        `PR #${prNumber} not found for ${repoFullName}`,
+        'open the PR in DevDigest to import it, then retry',
+      );
+    }
+
+    // 3. Get blast data (zero LLM on this path)
+    try {
+      const blast = await this.blastService.getBlast(workspaceId, pr.id);
+      return ok(blast);
+    } catch (e) {
+      if (e instanceof NotFoundError) {
+        return err(
+          `PR #${prNumber} not found for ${repoFullName}`,
+          'open the PR in DevDigest to import it, then retry',
+        );
+      }
+      throw e;
+    }
   }
 
   // -------------------------------------------------------------------------

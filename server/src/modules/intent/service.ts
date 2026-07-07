@@ -27,7 +27,7 @@ export class IntentService {
   private repo: ReviewRepository;
 
   constructor(private container: Container) {
-    this.repo = new ReviewRepository(container.db);
+    this.repo = container.reviewRepo;
   }
 
   // ---- public API -----------------------------------------------------------

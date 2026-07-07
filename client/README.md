@@ -31,7 +31,7 @@ flowchart TD
   SETTINGS["/settings/:section<br/>API keys · models"]
 
   PULLS -->|"GET /repos/:id/pulls · /repos/:id/index-state"| API
-  PR -->|"GET /pulls/:id · /reviews · /pulls/:id/comments · /pulls/:id/smart-diff<br/>POST /pulls/:id/review · /findings/:id/(accept|dismiss)"| API
+  PR -->|"GET /pulls/:id · /reviews · /pulls/:id/comments · /pulls/:id/smart-diff · /pulls/:id/blast<br/>POST /pulls/:id/review · /findings/:id/(accept|dismiss)"| API
   AGENTS -->|"/agents · /agents/:id"| API
   SETTINGS -->|"/settings · /providers"| API
 ```
@@ -47,3 +47,19 @@ mocked, so they need neither the API nor a browser. The real browser journeys
 (client + API + seeded DB) are covered by the deterministic agent-browser suite
 in [`../e2e`](../e2e/README.md) and the `e2e-web.yml` workflow. See
 [`../TESTING.md`](../TESTING.md).
+
+```bash
+./node_modules/.bin/vitest run                                # all tests
+./node_modules/.bin/tsc --noEmit                               # typecheck
+```
+
+Run only a subset by filtering on a plain substring of the file path
+(`vitest run` filters aren't regex — bracketed route dirs like `[repoId]` won't
+match a `.*` pattern):
+
+```bash
+./node_modules/.bin/vitest run BlastRadiusCard OverviewTab   # matching files only
+```
+
+Use the local binaries directly (not `pnpm test`/`pnpm typecheck`) in
+environments where `pnpm install`'s build-script pre-check fails.

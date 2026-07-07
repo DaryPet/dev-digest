@@ -34,6 +34,7 @@ import type {
   BlastChangedSymbol,
   BlastResult,
   FileRankRow,
+  ImpactedRouteRow,
   IndexResult,
   IndexState,
   RefRow,
@@ -101,8 +102,8 @@ const PHANTOM_GLOBALS_ALLOWLIST: ReadonlySet<string> = new Set([
 export class RepoIntelService implements RepoIntel {
   private readonly repo: RepoIntelRepository;
 
-  constructor(private container: Container) {
-    this.repo = new RepoIntelRepository(container.db);
+  constructor(private container: Container, repoOverride?: RepoIntelRepository) {
+    this.repo = repoOverride ?? new RepoIntelRepository(container.db);
   }
 
   // -------------------------------------------------------------------------
@@ -294,13 +295,103 @@ export class RepoIntelService implements RepoIntel {
       }
     }
 
+    // Apply per-symbol cap (rank-desc within group, then flatten rank-desc overall).
+    const bySym = new Map<string, BlastCallerRow[]>();
+    for (const c of callerRows) {
+      const g = bySym.get(c.viaSymbol) ?? [];
+      g.push(c);
+      bySym.set(c.viaSymbol, g);
+    }
+    const degradedCapped: BlastCallerRow[] = [];
+    for (const g of bySym.values()) {
+      g.sort((a, b) => b.rank - a.rank);
+      degradedCapped.push(...g.slice(0, MAX_CALLERS_PER_SYMBOL));
+    }
+    degradedCapped.sort((a, b) => b.rank - a.rank);
+
     return {
       changedSymbols,
-      callers: callerRows,
+      callers: degradedCapped,
       impactedEndpoints: [...endpoints],
       degraded: true,
       reason: 'no_data',
     };
+  }
+
+  /**
+   * Reverse-import BFS: finds route/cron files reachable from the given seed
+   * files within BFS_DEPTH hops. Depth 0 = seed itself. Pure reads over
+   * `file_edges` + `file_facts`. Degraded contract: returns `[]` on flag-off /
+   * no edges / empty input — never throws.
+   */
+  async getImpactedRoutes(repoId: string, files: string[]): Promise<ImpactedRouteRow[]> {
+    if (!this.container.config.repoIntelEnabled) return [];
+    if (files.length === 0) return [];
+
+    const edges = await this.repo.getEdges(repoId);
+    if (edges.length === 0) return [];
+
+    // Build reversed adjacency: toFile → [fromFile] ("who imports me").
+    const reverseAdj = new Map<string, string[]>();
+    for (const e of edges) {
+      const arr = reverseAdj.get(e.toFile);
+      if (arr) arr.push(e.fromFile);
+      else reverseAdj.set(e.toFile, [e.fromFile]);
+    }
+
+    // BFS from each seed file; track (seedFile, reachedFile, depth) pairs.
+    type Reached = { seedFile: string; depth: number };
+    const reachedMap = new Map<string, Reached[]>(); // reachedFile → entries
+
+    for (const seed of files) {
+      const visited = new Set<string>();
+      const queue: Array<{ file: string; depth: number }> = [{ file: seed, depth: 0 }];
+
+      while (queue.length > 0) {
+        const item = queue.shift()!;
+        if (visited.has(item.file)) continue;
+        visited.add(item.file);
+
+        const entry: Reached = { seedFile: seed, depth: item.depth };
+        const existing = reachedMap.get(item.file);
+        if (existing) existing.push(entry);
+        else reachedMap.set(item.file, [entry]);
+
+        if (item.depth < BFS_DEPTH) {
+          for (const importer of reverseAdj.get(item.file) ?? []) {
+            if (!visited.has(importer)) {
+              queue.push({ file: importer, depth: item.depth + 1 });
+            }
+          }
+        }
+      }
+    }
+
+    // Fetch file facts only for files that were actually reached.
+    const reachedFiles = [...reachedMap.keys()];
+    const factRows = await this.repo.getFileFacts(repoId, reachedFiles);
+    const factMap = new Map<string, { endpoints: string[]; crons: string[] }>();
+    for (const f of factRows) {
+      factMap.set(f.filePath, { endpoints: f.endpoints, crons: f.crons });
+    }
+
+    // Build result: only rows with at least one endpoint or cron.
+    const result: ImpactedRouteRow[] = [];
+    for (const [file, entries] of reachedMap.entries()) {
+      const facts = factMap.get(file);
+      if (!facts || (facts.endpoints.length === 0 && facts.crons.length === 0)) continue;
+      for (const { seedFile, depth } of entries) {
+        result.push({
+          seedFile,
+          file,
+          depth,
+          endpoints: facts.endpoints,
+          crons: facts.crons,
+        });
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -369,7 +460,21 @@ export class RepoIntelService implements RepoIntel {
         rank: c.rank,
       });
     }
+    // Per-symbol caller cap: MAX_CALLERS_PER_SYMBOL per viaSymbol group, rank
+    // desc within each group. The global rank-desc sort is preserved.
     callers.sort((a, b) => b.rank - a.rank);
+    const callersBySymbol = new Map<string, BlastCallerRow[]>();
+    for (const c of callers) {
+      const group = callersBySymbol.get(c.viaSymbol) ?? [];
+      group.push(c);
+      callersBySymbol.set(c.viaSymbol, group);
+    }
+    const cappedCallers: BlastCallerRow[] = [];
+    for (const group of callersBySymbol.values()) {
+      // Group is already rank-desc (we iterated callers rank-desc).
+      cappedCallers.push(...group.slice(0, MAX_CALLERS_PER_SYMBOL));
+    }
+    cappedCallers.sort((a, b) => b.rank - a.rank);
 
     // Precomputed facts per caller file (endpoints + crons), so consumers can
     // attribute them to the changed symbol whose callers live in that file.
@@ -383,7 +488,7 @@ export class RepoIntelService implements RepoIntel {
 
     return {
       changedSymbols,
-      callers: callers.slice(0, MAX_CALLERS_PER_SYMBOL),
+      callers: cappedCallers,
       impactedEndpoints: [...endpoints],
       factsByFile,
       degraded: false,

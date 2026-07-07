@@ -23,7 +23,7 @@ export class SmartDiffService {
   private repo: ReviewRepository;
 
   constructor(container: Container, repo?: ReviewRepository) {
-    this.repo = repo ?? new ReviewRepository(container.db);
+    this.repo = repo ?? container.reviewRepo;
   }
 
   async getSmartDiff(workspaceId: string, prId: string): Promise<SmartDiff> {

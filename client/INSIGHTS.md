@@ -198,6 +198,33 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   it has now been missed twice. Evidence:
   `_components/SmartDiffViewer/styles.ts`.
 
+- **2026-07-06** — When a child card gains a data hook, the PARENT composite
+  test breaks too: `OverviewTab.test.tsx` renders `BlastRadiusCard` as a real
+  child, so once the card called `useBlastRadius` the parent test needed its
+  own `vi.mock("@/lib/hooks/blast")` or it attempted a real fetch. Rule: a new
+  hook inside a `_components/*` card must be mocked in every composite test
+  that renders it, not just the card's own test. Evidence:
+  `_components/OverviewTab/OverviewTab.test.tsx`.
+- **2026-07-06** — Plan-frozen UI copy with typographic characters (`—`, `…`)
+  must land verbatim, and RTL tests assert those strings as exact literals —
+  so the messages json and the test file have to change together. An
+  implementer that "ASCII-safes" the copy (`--`, `...`) produces a
+  copy-fidelity drift that plan-verifier flags. To insert non-ASCII into an
+  existing ASCII file, use a Python byte-replace instead of the `Edit` tool
+  (same corruption risk as server/INSIGHTS.md 2026-06-30). Evidence:
+  `client/messages/en/brief.json`, `_components/BlastRadiusCard/BlastRadiusCard.test.tsx`.
+- **2026-07-07** — A count/label pair rendered as **bold number + separately
+  styled label in two sibling `<span>`s** (design-mock requirement — e.g.
+  `<span>{count}</span> <span>{label}</span>`) breaks a plain
+  `getByText("1 symbols")` RTL assertion: the combined string is no longer one
+  text node. Match on an element's full `textContent` instead:
+  `screen.getByText((_, el) => el?.tagName.toLowerCase() === "span" &&
+  el.textContent?.replace(/\s+/g, " ").trim() === "1 symbols")`. Distinct from
+  the 2026-07-02 `<q>`-tag entry (that's about CSS-generated quote glyphs, not
+  split number/label markup). Evidence:
+  `_components/BlastRadiusCard/BlastRadiusCard.test.tsx` (`getByCountText`
+  helper).
+
 ## Decisions
 
 - **2026-07-02** — The PR Overview tab is laid out 1:1 per the design mock

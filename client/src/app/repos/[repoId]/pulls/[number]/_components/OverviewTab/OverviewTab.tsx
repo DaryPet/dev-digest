@@ -10,12 +10,14 @@ import { s } from "./styles";
 
 interface OverviewTabProps {
   prId: string | number;
+  repoFullName: string | null;
+  headSha: string | null;
 }
 
 /** Overview tab layout per the PR-page design: PR BRIEF verdict card on top,
  *  then a two-column row — Intent card (left) and Blast radius / prior-PRs
  *  column (right). The Description section has been removed per the mock. */
-export function OverviewTab({ prId }: OverviewTabProps) {
+export function OverviewTab({ prId, repoFullName, headSha }: OverviewTabProps) {
   const t = useTranslations("brief");
   return (
     <>
@@ -26,7 +28,7 @@ export function OverviewTab({ prId }: OverviewTabProps) {
 
       <div style={s.briefGrid}>
         <IntentCard prId={prId} />
-        <BlastRadiusCard />
+        <BlastRadiusCard prId={prId} repoFullName={repoFullName} headSha={headSha} />
       </div>
     </>
   );

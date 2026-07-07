@@ -28,7 +28,7 @@ export function buildMcpServer(container: Container, ctx: McpContext): McpServer
   registerRunAgentOnPr(server, service);
   registerGetFindings(server, service);
   registerGetConventions(server, service);
-  registerGetBlastRadius(server);
+  registerGetBlastRadius(server, service);
 
   return server;
 }
