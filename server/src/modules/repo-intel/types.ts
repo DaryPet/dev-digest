@@ -129,6 +129,21 @@ export interface RepoMapResult {
   reason?: DegradedReason;
 }
 
+// ---------------------------------------------------------------------------
+// Impacted routes (facade method `getImpactedRoutes`). Reverse-import BFS
+// over `file_edges` + `file_facts`. Introduced in the blast-radius feature.
+// ---------------------------------------------------------------------------
+
+export interface ImpactedRouteRow {
+  /** Changed file the reverse-import BFS started from. */
+  seedFile: string;
+  /** Reached file (depth 0 = the seed itself, up to BFS_DEPTH=2 hops). */
+  file: string;
+  depth: number; // 0 | 1 | 2
+  endpoints: string[]; // "METHOD /path" strings from file_facts
+  crons: string[];
+}
+
 /**
  * The facade. Studio (T2+) serves reads purely from the Postgres cache; T1 and
  * CI may parse diff-scoped on the hot path. Indexing runs through
@@ -145,6 +160,12 @@ export interface RepoIntel {
 
   // --- Reads --------------------------------------------------------------
   getBlastRadius(repoId: string, changedFiles: string[]): Promise<BlastResult>;
+  /**
+   * Reverse-import BFS: which route/cron files are reachable from the given
+   * changed files within BFS_DEPTH hops? Depth 0 = the seed file itself.
+   * Returns `[]` when the flag is off / no edges / empty input. Never throws.
+   */
+  getImpactedRoutes(repoId: string, files: string[]): Promise<ImpactedRouteRow[]>;
   getRepoMap(repoId: string, tokenBudget?: number): Promise<RepoMapResult>;
   getFileRank(repoId: string, paths: string[]): Promise<FileRankRow[]>;
   getSymbolsInFiles(repoId: string, paths: string[]): Promise<SymbolRow[]>;

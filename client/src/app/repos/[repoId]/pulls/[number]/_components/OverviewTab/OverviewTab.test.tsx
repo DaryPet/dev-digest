@@ -22,13 +22,19 @@ vi.mock("@/lib/hooks/intent", () => ({
   useComputeIntent: vi.fn(),
 }));
 
+vi.mock("@/lib/hooks/blast", () => ({
+  useBlastRadius: vi.fn(),
+}));
+
 import { usePrReviews, usePrRuns } from "@/lib/hooks/reviews";
 import { useIntent, useComputeIntent } from "@/lib/hooks/intent";
+import { useBlastRadius } from "@/lib/hooks/blast";
 
 const mockUsePrReviews = vi.mocked(usePrReviews);
 const mockUsePrRuns = vi.mocked(usePrRuns);
 const mockUseIntent = vi.mocked(useIntent);
 const mockUseComputeIntent = vi.mocked(useComputeIntent);
+const mockUseBlastRadius = vi.mocked(useBlastRadius);
 
 /** Build a minimal TanStack Query stub — casts through unknown per INSIGHTS. */
 function q<T extends (...args: never[]) => unknown>(
@@ -46,7 +52,7 @@ function renderTab(prId: string | number = "pr-1") {
         locale="en"
         messages={{ brief: briefMessages, prReview: prReviewMessages }}
       >
-        <OverviewTab prId={prId} />
+        <OverviewTab prId={prId} repoFullName={null} headSha={null} />
       </NextIntlClientProvider>
     </QueryClientProvider>,
   );
@@ -59,6 +65,9 @@ function setupEmptyState() {
   mockUseIntent.mockReturnValue(q<typeof useIntent>({ intent: null }));
   mockUseComputeIntent.mockReturnValue(
     q<typeof useComputeIntent>(undefined, { mutate: vi.fn(), isPending: false }),
+  );
+  mockUseBlastRadius.mockReturnValue(
+    q<typeof useBlastRadius>(undefined, { isError: true }),
   );
 }
 

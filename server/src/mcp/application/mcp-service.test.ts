@@ -6,6 +6,8 @@ import type { McpRepository } from '../infrastructure/mcp.repository.js';
 import type { Container } from '../../platform/container.js';
 import type { AgentRow } from '../../db/rows.js';
 import { NotFoundError } from '../../platform/errors.js';
+import type { IBlastService } from './mcp-service.js';
+import type { BlastResponse } from '../../modules/blast/schemas.js';
 
 /**
  * Unit tests for McpService (SDK-free, no real DB, no network).
@@ -17,6 +19,7 @@ import { NotFoundError } from '../../platform/errors.js';
  *     agent-not-found → P4; blocking orchestration returns {runId,verdict,findings}.
  *   - get_findings: not-found → P4; running → P4; failed → P4; done → ok.
  *   - get_conventions: MCP_REPO absent → P4; repo-not-found → P4; ok path.
+ *   - get_blast_radius: repo-not-found → P4; PR-not-found → P4; ok path.
  */
 
 // ---------------------------------------------------------------------------
@@ -121,6 +124,20 @@ function makeReviewService(opts: {
   };
 }
 
+/** Stub IBlastService */
+function makeBlastService(opts: {
+  result?: BlastResponse;
+  throwNotFound?: boolean;
+}): IBlastService {
+  return {
+    getBlast: async (_workspaceId: string, _prId: string) => {
+      if (opts.throwNotFound) throw new NotFoundError('Pull request not found');
+      if (opts.result) return opts.result;
+      throw new Error('makeBlastService: no result configured');
+    },
+  };
+}
+
 const DEFAULT_CTX: McpContext = {
   workspaceId: DEFAULT_WS,
   repo: 'acme/payments-api',
@@ -211,6 +228,26 @@ const DEFAULT_AGENT_RUN_ROW = {
   grounding: null,
   score: 40,
   blockers: 1,
+};
+
+const DEFAULT_BLAST_RESPONSE: BlastResponse = {
+  blast: {
+    changed_symbols: [{ name: 'processPayment', file: 'src/payments.ts', kind: 'function' }],
+    downstream: [
+      {
+        symbol: 'processPayment',
+        callers: [{ name: 'chargeUser', file: 'src/billing.ts', line: 42 }],
+        endpoints_affected: ['POST /api/checkout'],
+        crons_affected: [],
+      },
+    ],
+    summary: '1 symbols · 1 callers · 1 endpoints · 0 crons',
+  },
+  index: {
+    status: 'full',
+    degraded: false,
+    reason: null,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -591,6 +628,94 @@ describe('McpService.getConventions', () => {
       expect(JSON.stringify(conv)).not.toContain('SECRET_SNIPPET');
       expect(conv).not.toHaveProperty('evidenceSnippet');
       expect(conv).not.toHaveProperty('evidence_snippet');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// get_blast_radius
+// ---------------------------------------------------------------------------
+
+describe('McpService.getBlastRadius', () => {
+  it('returns P4 error when repo is not found', async () => {
+    const service = new McpService(
+      makeContainer({}),
+      DEFAULT_CTX,
+      {
+        mcpRepo: makeRepo({ repo: undefined }),
+        blastService: makeBlastService({ result: DEFAULT_BLAST_RESPONSE }),
+      },
+    );
+
+    const result = await service.getBlastRadius('acme/unknown-repo', 42);
+    expect(result.kind).toBe('error');
+    if (result.kind === 'error') {
+      expect(result.message).toContain('not found in this workspace');
+      expect(result.next).toBe('add it in DevDigest, then retry');
+    }
+  });
+
+  it('returns P4 error when PR is not found', async () => {
+    const service = new McpService(
+      makeContainer({}),
+      DEFAULT_CTX,
+      {
+        mcpRepo: makeRepo({ repo: DEFAULT_REPO_ROW as never, pr: undefined }),
+        blastService: makeBlastService({ result: DEFAULT_BLAST_RESPONSE }),
+      },
+    );
+
+    const result = await service.getBlastRadius('acme/payments-api', 99);
+    expect(result.kind).toBe('error');
+    if (result.kind === 'error') {
+      expect(result.message).toContain('PR #99 not found for acme/payments-api');
+      expect(result.next).toBe('open the PR in DevDigest to import it, then retry');
+    }
+  });
+
+  it('returns P4 error when BlastService throws NotFoundError', async () => {
+    const service = new McpService(
+      makeContainer({}),
+      DEFAULT_CTX,
+      {
+        mcpRepo: makeRepo({
+          repo: DEFAULT_REPO_ROW as never,
+          pr: DEFAULT_PR_ROW as never,
+        }),
+        blastService: makeBlastService({ throwNotFound: true }),
+      },
+    );
+
+    const result = await service.getBlastRadius('acme/payments-api', 42);
+    expect(result.kind).toBe('error');
+    if (result.kind === 'error') {
+      expect(result.message).toContain('PR #42 not found for acme/payments-api');
+      expect(result.next).toBe('open the PR in DevDigest to import it, then retry');
+    }
+  });
+
+  it('returns BlastResponse on success', async () => {
+    const service = new McpService(
+      makeContainer({}),
+      DEFAULT_CTX,
+      {
+        mcpRepo: makeRepo({
+          repo: DEFAULT_REPO_ROW as never,
+          pr: DEFAULT_PR_ROW as never,
+        }),
+        blastService: makeBlastService({ result: DEFAULT_BLAST_RESPONSE }),
+      },
+    );
+
+    const result = await service.getBlastRadius('acme/payments-api', 42);
+    expect(result.kind).toBe('ok');
+    if (result.kind === 'ok') {
+      expect(result.data.blast.changed_symbols).toHaveLength(1);
+      expect(result.data.blast.changed_symbols[0]!.name).toBe('processPayment');
+      expect(result.data.blast.downstream).toHaveLength(1);
+      expect(result.data.blast.downstream[0]!.callers).toHaveLength(1);
+      expect(result.data.index.status).toBe('full');
+      expect(result.data.index.degraded).toBe(false);
     }
   });
 });

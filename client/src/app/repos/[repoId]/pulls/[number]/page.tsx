@@ -135,7 +135,9 @@ export default function PRDetailPage() {
       />
 
       <div style={{ padding: "24px 90px 44px", display: "flex", flexDirection: "column", gap: 24 }}>
-        {tab === "overview" && prId && <OverviewTab prId={prId} />}
+        {tab === "overview" && prId && (
+          <OverviewTab prId={prId} repoFullName={repoFullName} headSha={pr.head_sha} />
+        )}
 
         {tab === "findings" && (
           <FindingsTab

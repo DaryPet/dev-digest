@@ -22,5 +22,17 @@
   "prBrief": "PR brief",
   "riskAreas": "Risk areas",
   "noBlast": "Blast radius has not been computed for this PR yet.",
-  "priorPrs": "Prior PRs touching these files"
+  "priorPrs": "Prior PRs touching these files",
+  "blast": {
+    "symbols": "{count} symbols",
+    "callers": "{count} callers",
+    "endpoints": "{count} endpoints",
+    "crons": "{count} cron",
+    "degraded": "Partial index",
+    "degradedHint": "The code index is incomplete — callers and endpoints may be missing.",
+    "loading": "Computing blast radius…",
+    "tree": "Tree",
+    "graph": "Graph",
+    "moreCallers": "+{count} more"
+  }
 }

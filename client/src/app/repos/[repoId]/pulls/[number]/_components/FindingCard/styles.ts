@@ -4,10 +4,15 @@ import type { CSSProperties } from "react";
 export const s = {
   card: (focused: boolean, sevColor: string, muted: boolean): CSSProperties => ({
     borderRadius: 8,
-    // All-longhand (never mix `border` shorthand with `borderLeft` — React warns
-    // about updating shorthand + non-shorthand on the same rerender).
+    // All-longhand, including per-side colors: `borderColor` is itself a
+    // shorthand for all 4 border-*-color longhands, so setting it alongside
+    // `borderLeftColor` is the exact "shorthand + non-shorthand" conflict
+    // React warns about on rerender. Set the 3 non-left sides explicitly
+    // instead and let `borderLeftColor` own the accent stripe.
     borderStyle: "solid",
-    borderColor: focused ? sevColor : "var(--border)",
+    borderTopColor: focused ? sevColor : "var(--border)",
+    borderRightColor: focused ? sevColor : "var(--border)",
+    borderBottomColor: focused ? sevColor : "var(--border)",
     borderWidth: 1,
     borderLeftWidth: 3,
     borderLeftColor: sevColor,

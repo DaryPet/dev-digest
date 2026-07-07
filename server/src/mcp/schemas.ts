@@ -8,6 +8,7 @@
  * Output schemas are z.object wrappers — used for documentation & tests only.
  */
 import { z } from 'zod';
+import { BlastRadius } from '@devdigest/shared';
 import { McpAgent, McpFinding, McpConvention } from './helpers.js';
 
 // ---------------------------------------------------------------------------
@@ -67,7 +68,11 @@ export const GetConventionsOutput = z.object({
 export type GetConventionsOutput = z.infer<typeof GetConventionsOutput>;
 
 export const GetBlastRadiusOutput = z.object({
-  status: z.literal('not_implemented'),
-  message: z.string(),
+  blast: BlastRadius,
+  index: z.object({
+    status: z.enum(['full', 'partial', 'degraded', 'failed']),
+    degraded: z.boolean(),
+    reason: z.string().nullable(),
+  }),
 });
 export type GetBlastRadiusOutput = z.infer<typeof GetBlastRadiusOutput>;

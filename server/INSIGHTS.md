@@ -158,6 +158,18 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   mode (pass `null`); `CallToolResult.content` is a union, so reading `.text`
   in a test needs an `item.type === 'text'` guard first (else TS2339).
 
+- **2026-07-06** — A pure, zero-I/O helper that physically lives under
+  `adapters/` (e.g. `adapters/git/diff-parser.ts`, which imports only
+  `@devdigest/shared` types) MAY be imported by a presentation entry point
+  without breaking the Onion dependency rule — the real side effect must stay
+  behind an injected seam. Precedent: the pre-push CLI's `review-command.ts`
+  imports `parseUnifiedDiff` directly while the actual `git diff` call is
+  behind the injected `getGitDiff` wrapper; `architecture-reviewer` graded it
+  Minor/low-confidence and it was deliberately kept (frozen in
+  `specs/blast-radius.md` §5.5). Don't re-litigate this exact import in future
+  reviews; a helper like this can also just be relocated out of `adapters/`.
+  Evidence: `server/src/cli/review-command.ts`, `server/src/cli/git-diff.ts`.
+
 ## Tooling Notes
 
 - **2026-06-20** — `pnpm typecheck`/`pnpm test` abort in this env on a dep
@@ -199,6 +211,21 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   — Enter selects the default "create column". Confirm the new `.sql` landed in
   `meta/_journal.json` afterward (see the 2026-06-20 journal note above).
 
+- **2026-07-06** — `node:util.parseArgs` option declarations in TS need
+  `as const` on each option's `type` field (`{ type: 'string' as const }`) —
+  without it the values type broadens to `string | boolean |
+  (string | boolean)[]` and won't assign to `string`, even though the option
+  is declared as a string. Evidence: `server/src/cli/index.ts`.
+- **2026-07-06** — `test/conventions.it.test.ts` fails 3/4 against the shared
+  dev DB **on pristine HEAD too** (verified on c72490e) — it's a pre-existing
+  state-dependent failure, not a regression signal; don't let it block an
+  unrelated diff. Technique to prove a full-suite failure is pre-existing
+  without stashing (safe while read-only subagents run):
+  `git worktree add <scratchpad>/baseline HEAD`, symlink
+  `server/node_modules` into it, copy `server/.env`, run the failing file
+  there, then `git worktree remove --force`. Evidence: baseline run
+  2026-07-06, `test/conventions.it.test.ts`.
+
 ## Recurring Errors & Fixes
 
 - **2026-06-30** — The `Edit` tool can corrupt a TypeScript file when the
@@ -213,6 +240,13 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   embedded non-ASCII literals near the edit target, do a byte-safe replacement
   (e.g. a one-off Python `content.replace(old_bytes, new_bytes)`) instead of
   the `Edit` tool, then verify with `tsc --noEmit`.
+- **2026-07-06** — Nuance to the 2026-06-30 non-ASCII corruption note above:
+  the risk is specific to `Edit` on files that already contain non-ASCII near
+  the target. `Write` of a NEW file containing `·`/`—`/`…` encodes correct
+  UTF-8 (confirmed: `blast/service.ts` summary string written with a literal
+  `·`). For *inserting* non-ASCII into an existing ASCII file, use the Python
+  byte-replace workaround from the 2026-06-30 entry. Evidence:
+  `server/src/modules/blast/service.ts`.
 
 - **2026-06-28** — `conventions` feature slot was defaulted to `openai/gpt-5.4` — wrong for this project. The standard across ALL features is `openrouter` + `deepseek/deepseek-v4-flash` (see `server/src/db/seed.ts:29`, `platform.ts:49`). Any new feature slot added to `FEATURE_MODELS` in `vendor/shared/contracts/platform.ts` must use `defaultProvider: 'openrouter'`, `defaultModel: 'deepseek/deepseek-v4-flash'` unless there is a specific reason to differ. Using a provider whose key isn't configured causes a **`ConfigError` → 500** (see below).
 - **2026-06-28** — `ConfigError` (thrown by `container.llm(id)` when an API key is missing) extends `AppError` with `statusCode = 500` (`platform/errors.ts:39`). So a missing API key surfaces as a plain 500 — no descriptive body in the browser console. Diagnose by checking the server terminal for `ConfigError: <PROVIDER>_API_KEY is not configured`.

@@ -1,7 +1,7 @@
 ---
 name: plan-verifier
 description: Read-only requirement-coverage verifier. Given a Development Plan (specs/<slug>.md) and the written code, it extracts every requirement and acceptance criterion, then audits whether each was actually implemented, returning a per-requirement verdict table (FULL/PARTIAL/MISSING/SCOPE-CREEP) with evidence and an overall pass/fail gate. Use to confirm definition-of-done after implementation. Verifies coverage ONLY — never redesigns, rewrites, or suggests fixes.
-model: claude-sonnet
+model: claude-sonnet-4-6
 tools: Read, Grep, Glob, Bash
 ---
 

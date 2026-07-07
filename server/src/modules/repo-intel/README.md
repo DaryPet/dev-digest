@@ -38,13 +38,18 @@ touch the pipeline internals:
 - `getRepoMap(repoId)` → the cached repo skeleton (fed into the **review prompt**).
 - `getFileRank(repoId, files)` → importance percentile per changed file.
 - `getCallerSignatures(repoId, files, limit)` → callers of changed symbols.
-- `getBlastRadius(repoId, files)` → impacted symbols / callers (used by L04).
+- `getBlastRadius(repoId, files)` → impacted symbols / callers, capped at 20
+  per symbol (used by L04's `modules/blast`).
+- `getImpactedRoutes(repoId, files)` → HTTP routes / crons reachable within
+  depth-2 of the reverse import graph (`file_edges` + `file_facts`; L04).
 - `getUnresolvedReferences(repoId, …)` → phantom-symbol detection (used by L06).
 - `getConventionSamples(repoId)` → top-ranked files for convention extraction (L02).
 
 In the starter, only `getRepoMap` / `getFileRank` / `getCallerSignatures` are
 wired — into `modules/reviews/run-executor.ts`, which adds the repo map and a
-high-blast-radius note to the prompt. Toggled by `REPO_INTEL_ENABLED` (global)
+high-blast-radius note to the prompt. L04 adds `modules/blast`
+(`GET /pulls/:id/blast`), which composes `getBlastRadius` +
+`getImpactedRoutes` + `getIndexState` into the PR impact map. Toggled by `REPO_INTEL_ENABLED` (global)
 and a per-agent `repo_intel` flag.
 
 ## Routes
