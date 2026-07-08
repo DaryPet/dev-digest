@@ -1,7 +1,7 @@
 ---
 name: test-writer
 description: Writes automated tests for already-implemented functionality across both surfaces — UI (client/) and backend (server/, reviewer-core/) — applying the project's testing skills per surface. Use when code needs test coverage written or extended. Self-verifies by running the scope's tests until green. HARD invariant: edits only test files; if a test cannot pass without changing source, it STOPS and reports the source defect instead of patching source.
-model: claude-sonnet-4-6
+model: sonnet
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 

@@ -26,14 +26,14 @@ the full fix: actually abort the network request.
 ## Scope
 
 Cross-package (`server` + `reviewer-core`), touches the `LLMProvider`
-contract → classify as **M/L**, needs a Development Plan
-(`specs/<slug>.md`) via the `planner` agent before implementation, run
+contract → classify as **M/L**, needs an Implementation Plan
+(`plans/<slug>.md`) via the `implementation-planner` agent before implementation, run
 through the full `dev-workflow` gate batch (researcher likely "no" — no
 unfamiliar tech, just needs OpenAI SDK's existing `signal` support in
-`.create()` options — planner "yes", architecture review "yes" since it
+`.create()` options — implementation-planner "yes", architecture review "yes" since it
 touches a shared contract consumed by two packages).
 
-## Sketch (for the planner to validate/refine, not a final design)
+## Sketch (for the implementation-planner to validate/refine, not a final design)
 
 1. **`server/src/platform/sse.ts` (`RunBus`)** — hold an `AbortController`
    per `runId` (new `Map<string, AbortController>`), exposed via e.g.

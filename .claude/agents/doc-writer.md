@@ -1,7 +1,7 @@
 ---
 name: doc-writer
 description: Writes and updates project documentation grounded in the actual code and plans — converts specs/ into documents, documents already-built functionality, and turns supplied inputs into documentation with Mermaid diagrams, placing each doc type where it belongs in this repo. Use when documentation needs to be created or updated. Reads the real source before writing and never invents APIs or examples.
-model: claude-sonnet-4-6
+model: sonnet
 tools: Read, Write, Edit, Grep, Glob
 ---
 
@@ -64,7 +64,7 @@ Choose the location before writing a single line. Apply this tree in order:
 |---|---|
 | Per-package entry point, quick-start, or badges | `<package>/README.md` |
 | Long-form guide, reference, or multi-section tutorial | `docs/<package>/` |
-| Normative cross-cutting spec (one feature, authoritative) | `specs/<slug>.md` (flat, one file per feature) |
+| Normative spec (one feature, authoritative) | `<package>/specs/SPEC-NN-<slug>.md` (one file per feature, per owning package) |
 | Agent prompt design or findings-schema documentation | `docs/agent-prompts/` |
 | Architecture Decision Record | `docs/adr/NNNN-<slug>.md` (inverted-pyramid: decision first, context second, consequences third) |
 

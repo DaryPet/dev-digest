@@ -1,7 +1,7 @@
 ---
 name: researcher
 description: Read-only research agent. Finds information either inside the project (code, docs, config, git history) or on the web, and returns a strictly structured report. Honestly states when something is NOT found. Use when you need to locate, gather, or verify information without changing any files.
-model: claude-sonnet-4-6
+model: sonnet
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 ---
 

@@ -19,7 +19,7 @@ Reusable AI skills that provide specialized knowledge and workflows. Canonical l
 | [security](security/SKILL.md) | Full-stack | OWASP Top 10:2025, auth, injection, uploads, secrets |
 | [mermaid-diagram](mermaid-diagram/SKILL.md) | Shared | Mermaid diagrams in markdown (flowcharts, sequence, ERD, …) |
 | [pr-self-review](pr-self-review/SKILL.md) | Workflow | Pre-PR second pass: routes the uncommitted diff to surface skills and gates on critical findings (PreToolUse hook enforced) |
-| [dev-workflow](dev-workflow/SKILL.md) | Workflow | Gated agent pipeline for any new TЗ: classify type/size, then ask ALL gates (researcher? planner? implementation? architecture review?) in ONE upfront batch with recommendations, then execute autonomously to the end — no re-asking mid-flight; tests/insights/docs automatic; trivial XS collapses to one question (plain chat or run the batch) |
+| [dev-workflow](dev-workflow/SKILL.md) | Workflow | Gated agent pipeline for any new TЗ: classify type/size, then ask ALL gates (researcher? development path — full SDD / plan-only / inline? implementation approach — team / single? architecture review?) in ONE upfront batch with recommendations, then execute autonomously to the end — no re-asking mid-flight; tests/insights/docs automatic; trivial XS collapses to one question (plain chat or run the batch) |
 
 ## What Are Skills?
 
