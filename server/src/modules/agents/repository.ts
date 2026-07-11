@@ -40,6 +40,9 @@ export interface UpdateAgent {
   ciFailOn?: CiFailOn;
   repoIntel?: boolean;
   enabled?: boolean;
+  /** Ordered repo-relative paths of manually-attached Project Context
+   *  documents. Not a config field — never bumps `version` (see isConfigChange). */
+  projectContextPaths?: string[] | null;
 }
 
 /** A skill linked to an agent (with its order), joined from agent_skills. */
@@ -136,6 +139,9 @@ export class AgentsRepository {
         ...(patch.ciFailOn !== undefined ? { ciFailOn: patch.ciFailOn } : {}),
         ...(patch.repoIntel !== undefined ? { repoIntel: patch.repoIntel } : {}),
         ...(patch.enabled !== undefined ? { enabled: patch.enabled } : {}),
+        ...(patch.projectContextPaths !== undefined
+          ? { projectContextPaths: patch.projectContextPaths }
+          : {}),
         ...(configChanged ? { version: nextVersion } : {}),
       })
       .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.id, id)))

@@ -41,7 +41,9 @@ export function useCreateSkill() {
 
 export interface UpdateSkillInput {
   id: string;
-  patch: Partial<Pick<Skill, "name" | "description" | "type" | "body" | "enabled" | "evidence_files">>;
+  patch: Partial<
+    Pick<Skill, "name" | "description" | "type" | "body" | "enabled" | "evidence_files" | "project_context_paths">
+  >;
 }
 
 export function useUpdateSkill() {

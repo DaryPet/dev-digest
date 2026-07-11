@@ -18,6 +18,7 @@ const SKILL: Skill = {
   enabled: true,
   version: 3,
   evidence_files: null,
+  project_context_paths: [],
 };
 
 const mutate = vi.fn();
@@ -25,6 +26,14 @@ const toastSuccess = vi.fn();
 
 vi.mock("../../../../../../../lib/hooks/skills", () => ({
   useUpdateSkill: () => ({ mutate, isPending: false, isSuccess: false, data: undefined }),
+}));
+
+// ProjectContextSection (rendered inline by ConfigTab) pulls in these hooks —
+// mock them here too, not just in the section's own test (2026-07-06 insight).
+vi.mock("@/lib/hooks/core", () => ({
+  useRepos: () => ({ data: [] }),
+  useContextFiles: () => ({ data: undefined, isLoading: false }),
+  useContextPreview: () => ({ data: undefined, isLoading: false }),
 }));
 
 vi.mock("../../../../../../../lib/toast", () => ({

@@ -1,24 +1,39 @@
 {
   "title": "Project Context",
-  "chunks": "{count} chunks",
-  "reindex": "Re-index",
-  "indexing": "Indexing…",
-  "resync": "Resync",
-  "resyncing": "Resyncing…",
-  "indexStatus": "Index status: {status}",
-  "loadError": "Couldn’t load specs",
-  "kb": "{kb}kb",
+  "loadError": "Couldn't load project context documents",
   "empty": {
     "title": "No spec files yet",
-    "body": "Drop your PRDs, tech specs, and acceptance criteria under .devdigest/specs/. Every agent and the PR brief read them as grounding context."
+    "body": "Drop your PRDs, tech specs, and acceptance criteria under specs/, docs/, or insights/ in this repo. Every agent and skill can then attach them as grounding context."
   },
-  "mode": {
-    "preview": "preview",
-    "edit": "edit"
+  "toolbar": {
+    "newFile": "New document",
+    "newFolder": "New folder",
+    "upload": "Upload markdown file",
+    "refresh": "Refresh"
   },
-  "editor": {
-    "loadError": "Couldn’t load spec",
+  "newFile": {
+    "title": "New document",
+    "subtitle": "Created inside the repo clone; discoverable by every agent and skill.",
+    "pathLabel": "Path",
+    "pathPlaceholder": "specs/my-spec.md",
+    "create": "Create",
+    "cancel": "Cancel"
+  },
+  "newFolder": {
+    "title": "New folder",
+    "subtitle": "Must live under specs/, docs/, or insights/.",
+    "pathLabel": "Path",
+    "pathPlaceholder": "specs/adr",
+    "create": "Create",
+    "cancel": "Cancel"
+  },
+  "preview": {
+    "select": "Select a document to preview it.",
+    "usedBy": "Used by {count} agents",
+    "loadError": "Couldn't load this document",
+    "tabPreview": "Preview",
+    "tabEdit": "Edit",
     "save": "Save",
-    "saving": "Saving…"
+    "cancel": "Cancel"
   }
 }

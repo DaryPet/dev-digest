@@ -67,6 +67,7 @@ export function ConfigTab({ skill }: { skill: Skill }) {
       <FormField label={t("config.body")} hint={t("config.bodyHint")}>
         <Textarea value={body} onChange={setBody} rows={14} mono />
       </FormField>
+
       <div style={s.actions}>
         <Button kind="primary" icon="Check" onClick={save} disabled={update.isPending}>
           {update.isPending ? t("config.saving") : t("config.save")}

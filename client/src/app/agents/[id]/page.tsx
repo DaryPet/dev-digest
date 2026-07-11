@@ -9,10 +9,13 @@ import { Button, ErrorState, Skeleton, Icon, Badge } from "@devdigest/ui";
 import { AppShell } from "../../../components/app-shell";
 import { AgentsRail } from "../_components/AgentsRail";
 import { AgentEditor } from "./_components/AgentEditor";
+import { TABS } from "./_components/AgentEditor/constants";
 import { useAgent } from "../../../lib/hooks/agents";
 import { ApiError } from "../../../lib/api";
 
-const VALID_TABS = ["config", "skills"];
+/* Derived from the editor's TABS so a newly added tab can never be silently
+   rejected by a stale whitelist (the ?tab=context regression). */
+const VALID_TABS = TABS.map((t) => t.key);
 
 export default function AgentEditorPage() {
   const params = useParams<{ id: string }>();

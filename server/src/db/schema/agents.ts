@@ -29,6 +29,11 @@ export const agents = pgTable('agents', {
   // + file-rank note) injected into the prompt. Default on; the global
   // REPO_INTEL_ENABLED flag is the second gate (facade degrades when off).
   repoIntel: boolean('repo_intel').notNull().default(true),
+  // Ordered repo-relative paths of manually-attached Project Context documents
+  // (specs/docs/insights .md files) — path only, never the document text.
+  // Nullable, no DB default (mirrors skills.evidenceFiles); DTO mapping always
+  // normalizes `row.projectContextPaths ?? []`.
+  projectContextPaths: jsonb('project_context_paths').$type<string[]>(),
   enabled: boolean('enabled').notNull().default(true),
   version: integer('version').notNull().default(1),
   createdBy: uuid('created_by').references(() => users.id),

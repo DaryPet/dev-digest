@@ -5,6 +5,7 @@
     "skillFallback": "Skill",
     "tabs": {
       "config": "Config",
+      "context": "Context",
       "preview": "Preview",
       "versions": "Versions",
       "stats": "Stats"
@@ -27,6 +28,24 @@
   "preview": {
     "subtitle": "Rendered as it appears in the review agent's prompt.",
     "empty": "This skill has no body yet."
+  },
+  "projectContext": {
+    "header": "Project context to use — {count} attached",
+    "inheritNote": "Any agent using this skill inherits these documents.",
+    "serializesAs": "Serializes as",
+    "empty": {
+      "title": "No documents discovered",
+      "body": "This repo has no markdown files under specs/, docs/, or insights/ yet."
+    },
+    "contextDocs": {
+      "filterPlaceholder": "Filter documents…",
+      "preview": "Preview",
+      "category": {
+        "specs": "specs",
+        "docs": "docs",
+        "insights": "insights"
+      }
+    }
   },
   "versions": {
     "title": "Versions",

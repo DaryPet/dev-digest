@@ -10,10 +10,13 @@ import { AppShell } from "../../../components/app-shell";
 import { SkillTypeBadge } from "../../../components/SkillTypeBadge";
 import { SkillsRail } from "../_components/SkillsRail";
 import { SkillEditor } from "./_components/SkillEditor";
+import { TABS } from "./_components/SkillEditor/constants";
 import { useSkill } from "../../../lib/hooks/skills";
 import { ApiError } from "../../../lib/api";
 
-const VALID_TABS = ["config", "preview", "versions", "stats"];
+/* Derived from the editor's TABS so a newly added tab can never be silently
+   rejected by a stale whitelist (the agents ?tab=context regression). */
+const VALID_TABS = TABS.map((t) => t.key);
 
 export default function SkillEditorPage() {
   const params = useParams<{ id: string }>();

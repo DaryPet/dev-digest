@@ -31,6 +31,7 @@ const DEFAULT_AGENT: AgentRow = {
   strategy: 'single-pass',
   ciFailOn: 'critical',
   repoIntel: false,
+  projectContextPaths: null,
   enabled: true,
   version: 1,
   createdBy: null,

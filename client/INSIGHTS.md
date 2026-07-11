@@ -224,6 +224,23 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   split number/label markup). Evidence:
   `_components/BlastRadiusCard/BlastRadiusCard.test.tsx` (`getByCountText`
   helper).
+- **2026-07-11** — A shared-contract field frozen as
+  `z.array(z.string()).default([])` (not `.nullish()`) is **required** in the
+  inferred TS type (`z.infer` of `.default()` output is non-optional), so every
+  plain `Agent`/`Skill` object-literal fixture anywhere in the client breaks on
+  `tsc --noEmit` — while `vitest run` (esbuild, type-stripping) stays green,
+  masking it. Adding such a field means a repo-wide fixture sweep for
+  `project_context_paths: []`-style one-liners, including directories no task
+  owns. Evidence: `src/vendor/shared/contracts/knowledge.ts`, fixed fixtures in
+  `agents/_components/AgentCard/AgentCard.test.tsx`,
+  `skills/_components/{SkillCard,SkillsListView}/*.test.tsx`.
+- **2026-07-11** — RTL's `getByText(string)` whitespace normalization applies
+  to the rendered DOM text but NOT to a multi-line target string — asserting a
+  `<pre>` block's exact content (e.g. `JSON.stringify(arr, null, 2)` with real
+  `\n`s) needs a function matcher comparing `el.textContent === expected`.
+  Distinct from the 2026-07-02 `<q>` and 2026-07-07 split-span entries (those
+  are about generated glyphs / split text nodes). Evidence:
+  `SkillEditor/_components/ProjectContextSection/ProjectContextSection.test.tsx`.
 
 ## Decisions
 
