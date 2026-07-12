@@ -33,6 +33,7 @@
     "header": "Project context to use — {count} attached",
     "inheritNote": "Any agent using this skill inherits these documents.",
     "serializesAs": "Serializes as",
+    "serializesAsHeading": "## Project specifications",
     "empty": {
       "title": "No documents discovered",
       "body": "This repo has no markdown files under specs/, docs/, or insights/ yet."

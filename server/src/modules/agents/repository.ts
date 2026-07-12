@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import type { CiFailOn, Provider, ReviewStrategy } from '@devdigest/shared';
@@ -208,6 +208,26 @@ export class AgentsRepository {
   async skillIdsForAgent(agentId: string): Promise<string[]> {
     const links = await this.linkedSkills(agentId);
     return links.map((l) => l.skill.id);
+  }
+
+  /** Batched `linkedSkills` for many agents in one query (avoids N+1 when
+      scanning every agent in a workspace) — keyed by agent id, `order` ascending
+      within each agent's list. */
+  async linkedSkillsForAgents(agentIds: string[]): Promise<Map<string, LinkedSkillRow[]>> {
+    const result = new Map<string, LinkedSkillRow[]>();
+    if (agentIds.length === 0) return result;
+    const rows = await this.db
+      .select({ agentId: t.agentSkills.agentId, skill: t.skills, order: t.agentSkills.order })
+      .from(t.agentSkills)
+      .innerJoin(t.skills, eq(t.agentSkills.skillId, t.skills.id))
+      .where(inArray(t.agentSkills.agentId, agentIds))
+      .orderBy(asc(t.agentSkills.order));
+    for (const r of rows) {
+      const list = result.get(r.agentId) ?? [];
+      list.push({ skill: r.skill, order: r.order });
+      result.set(r.agentId, list);
+    }
+    return result;
   }
 
   /** Link a skill to an agent at a given order (idempotent: upserts order). */

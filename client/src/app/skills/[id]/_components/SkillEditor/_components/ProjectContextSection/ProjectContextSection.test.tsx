@@ -77,10 +77,10 @@ describe("SkillEditor ProjectContextSection", () => {
     expect(screen.getByText("onboarding.md")).toBeInTheDocument();
   });
 
-  it("shows the AC-16 'serializes as' preview listing the persisted attach order", () => {
+  it("shows the 'serializes as' preview as the assembled heading + attached paths", () => {
     renderWithIntl(<ProjectContextSection skill={SKILL} />);
     expect(screen.getByText("Serializes as")).toBeInTheDocument();
-    const expected = JSON.stringify(["specs/api.md"], null, 2);
+    const expected = "## Project specifications\n- specs/api.md";
     expect(screen.getByText((_, el) => el?.tagName.toLowerCase() === "pre" && el.textContent === expected)).toBeInTheDocument();
   });
 

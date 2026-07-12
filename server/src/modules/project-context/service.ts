@@ -274,9 +274,12 @@ export class ProjectContextService {
    */
   private async countUsedBy(workspaceId: string, path: string): Promise<number> {
     const agents = await this.container.agentsRepo.list(workspaceId);
+    const linkedByAgent = await this.container.agentsRepo.linkedSkillsForAgents(
+      agents.map((a) => a.id),
+    );
     let count = 0;
     for (const agent of agents) {
-      const linkedSkills = await this.container.agentsRepo.linkedSkills(agent.id);
+      const linkedSkills = linkedByAgent.get(agent.id) ?? [];
       const skillPathLists = linkedSkills
         .filter((l) => l.skill.enabled)
         .map((l) => l.skill.projectContextPaths ?? []);

@@ -66,6 +66,7 @@ export function useUpdateAgent() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["agents"] });
       qc.setQueryData(["agent", data.id], data);
+      qc.invalidateQueries({ queryKey: ["context"] });
     },
   });
 }

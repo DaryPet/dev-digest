@@ -242,6 +242,42 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   are about generated glyphs / split text nodes). Evidence:
   `SkillEditor/_components/ProjectContextSection/ProjectContextSection.test.tsx`.
 
+- **2026-07-12** — `ContextDocumentAttachList`'s row order previously
+  re-seeded (attached-first sort) on **every** toggle because the seeding
+  `useEffect`'s dedup key included `attachedKey` (`attached.join(",")`) —
+  since toggling changes `attachedPaths`, the key changed on every click and
+  the whole list re-sorted, so a row visibly jumped to the top on check and
+  back down on uncheck. Fix: seed the display `order` once per catalog only
+  (dedup key = `attachable|sorted document paths`, no `attachedKey`); after
+  the initial seed, only an explicit drag (`onDrop`) may reorder — checking a
+  box must never move a row. Evidence:
+  `components/ContextDocumentAttachList/ContextDocumentAttachList.tsx`.
+- **2026-07-12** — `useUpdateSkill`/`useUpdateAgent` (`lib/hooks/{skills,agents}.ts`)
+  did not invalidate the `["context"]` query key that `useContextFiles`
+  (`lib/hooks/core.ts`) caches its catalog+token data under — so after
+  attaching/detaching a document, the per-row `≈N` tokens and the footer
+  total stayed frozen at whatever was cached on page load (looked like "only
+  the first document has a token count" / "the total never updates") until a
+  full reload. The mutation and the query it must invalidate live in
+  different hook files, so this is easy to miss when adding a new
+  attach/detach mutation — always cross-check `lib/hooks/core.ts` for query
+  keys a same-domain mutation should invalidate, not just same-file ones.
+  Fix: both mutations' `onSuccess` now also call
+  `qc.invalidateQueries({ queryKey: ["context"] })`.
+- **2026-07-12** — `ContextDocumentAttachList` is one component shared by the
+  Agent Context tab and the Skill "Project context to use" section, but the
+  two call sites are NOT visually identical per the design mocks: the agent
+  tab's Preview button shows an icon **and** the label text, the skill
+  section's Preview button is icon-only. Added a `showPreviewLabel?: boolean`
+  prop (default `true`) rather than forking the component — the skill call
+  site passes `false`. Also: only the agent Context tab renders a
+  token-total footer; the skill section instead renders a "Serializes as"
+  block (`## Project specifications` + attached paths) with no token count —
+  don't assume adding a footer/prop to one call site's usage should be
+  mirrored in the other without checking the mock for that specific screen.
+  Evidence: `components/ContextDocumentAttachList/ContextDocumentAttachList.tsx`,
+  `_components/ProjectContextSection/ProjectContextSection.tsx`.
+
 ## Decisions
 
 - **2026-07-02** — The PR Overview tab is laid out 1:1 per the design mock
@@ -256,3 +292,14 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   PR BRIEF reuses `VerdictBanner` (now takes optional `cost`/`tokensIn`/
   `tokensOut` rendered via `RunCostBadge` under the score ring) fed by
   `usePrReviews` + `usePrRuns` (cached, no new endpoint).
+- **2026-07-12** — A shared component reused across surfaces living in
+  DIFFERENT i18n namespaces (`ContextDocumentAttachList`: Project Context page
+  → `context`, Agent Context tab → `agents`, Skill section → `skillEditor`)
+  takes its display strings as props (`filterPlaceholder`/`categoryLabels`/
+  `emptyTitle`/…) instead of owning a `useTranslations` call — the "one
+  namespace per component" convention (2026-06-28) assumes a single-surface
+  component and can't pick one of three namespaces without duplicating keys.
+  Each consumer namespace carries an identically-shaped `contextDocs.*` block.
+  Alternative rejected: a fourth standalone namespace just for the shared
+  component (breaks the namespace-per-feature file layout). Evidence:
+  `src/components/ContextDocumentAttachList/ContextDocumentAttachList.tsx`.

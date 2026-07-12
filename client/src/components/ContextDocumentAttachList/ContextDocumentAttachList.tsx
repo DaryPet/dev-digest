@@ -25,6 +25,8 @@ export interface ContextDocumentAttachListProps {
   isLoading?: boolean;
   filterPlaceholder: string;
   previewLabel: string;
+  /** false = icon-only Preview button (skill section per design); default true. */
+  showPreviewLabel?: boolean;
   categoryLabels: Record<ProjectContextCategory, string>;
   emptyTitle: string;
   emptyBody?: string;
@@ -52,6 +54,7 @@ export function ContextDocumentAttachList({
   isLoading,
   filterPlaceholder,
   previewLabel,
+  showPreviewLabel = true,
   categoryLabels,
   emptyTitle,
   emptyBody,
@@ -60,25 +63,25 @@ export function ContextDocumentAttachList({
   const attachedSet = React.useMemo(() => new Set(attached), [attached]);
 
   // Local display order: attached (in persisted order) first, then the rest of
-  // the catalog — re-seeded only when the catalog or the persisted attach list
-  // changes, not on every local drag/toggle. Read-only mode keeps catalog order.
+  // the catalog — seeded once per catalog, NOT re-sorted on toggle/drag: rows
+  // must stay where they are while the user checks/unchecks (only an explicit
+  // drag moves a row). Read-only mode keeps catalog order.
   const [order, setOrder] = React.useState<string[]>([]);
   const [dragIndex, setDragIndex] = React.useState<number | null>(null);
   const [filter, setFilter] = React.useState("");
   const seededRef = React.useRef<string>("");
 
-  const attachedKey = attached.join(",");
   React.useEffect(() => {
     if (isLoading) return;
     const all = documents.map((d) => d.path);
     const next = attachable ? [...attached, ...all.filter((p) => !attachedSet.has(p))] : all;
-    const key = `${attachable}|${[...all].sort().join(",")}|${attachedKey}`;
+    const key = `${attachable}|${[...all].sort().join(",")}`;
     if (seededRef.current !== key) {
       seededRef.current = key;
       setOrder(next);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documents, attachedKey, attachable, isLoading]);
+  }, [documents, attachable, isLoading]);
 
   const docByPath = React.useMemo(() => {
     const m = new Map<string, ProjectContextDocument>();
@@ -180,17 +183,19 @@ export function ContextDocumentAttachList({
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  padding: 5,
-                  borderRadius: 5,
+                  gap: 6,
+                  padding: showPreviewLabel ? "5px 12px" : 6,
+                  borderRadius: 6,
                   border: "1px solid var(--border)",
                   background: "var(--bg-elevated)",
-                  color: "var(--text-muted)",
+                  color: "var(--text-secondary)",
+                  fontSize: 12.5,
                   cursor: "pointer",
                   flexShrink: 0,
                 }}
               >
                 <Icon.Eye size={13} />
+                {showPreviewLabel && previewLabel}
               </button>
             </div>
           );

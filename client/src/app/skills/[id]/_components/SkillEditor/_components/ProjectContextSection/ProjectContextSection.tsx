@@ -72,6 +72,7 @@ export function ProjectContextSection({ skill }: { skill: Skill }) {
         isLoading={isLoading}
         filterPlaceholder={t("projectContext.contextDocs.filterPlaceholder")}
         previewLabel={t("projectContext.contextDocs.preview")}
+        showPreviewLabel={false}
         categoryLabels={categoryLabels}
         emptyTitle={t("projectContext.empty.title")}
         emptyBody={t("projectContext.empty.body")}
@@ -80,7 +81,7 @@ export function ProjectContextSection({ skill }: { skill: Skill }) {
       <div style={s.serializesAs}>
         <div style={s.serializesAsLabel}>{t("projectContext.serializesAs")}</div>
         <pre className="mono" style={s.serializesAsPre}>
-          {JSON.stringify(attachedPaths, null, 2)}
+          {[t("projectContext.serializesAsHeading"), ...attachedPaths.map((p) => `- ${p}`)].join("\n")}
         </pre>
       </div>
 

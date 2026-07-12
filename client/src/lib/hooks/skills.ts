@@ -54,6 +54,7 @@ export function useUpdateSkill() {
       qc.invalidateQueries({ queryKey: ["skills"] });
       qc.setQueryData(["skill", data.id], data);
       qc.invalidateQueries({ queryKey: ["skill-versions", data.id] });
+      qc.invalidateQueries({ queryKey: ["context"] });
     },
   });
 }
