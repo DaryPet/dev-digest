@@ -54,6 +54,7 @@ export interface UpdateAgentInput {
       | "ci_fail_on"
       | "repo_intel"
       | "enabled"
+      | "project_context_paths"
     >
   >;
 }
@@ -65,6 +66,7 @@ export function useUpdateAgent() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["agents"] });
       qc.setQueryData(["agent", data.id], data);
+      qc.invalidateQueries({ queryKey: ["context"] });
     },
   });
 }

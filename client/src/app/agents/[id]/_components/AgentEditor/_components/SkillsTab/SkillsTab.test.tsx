@@ -21,6 +21,7 @@ const AGENT: Agent = {
   repo_intel: true,
   enabled: true,
   version: 1,
+  project_context_paths: [],
 };
 
 const SKILLS: Skill[] = [
@@ -33,6 +34,7 @@ const SKILLS: Skill[] = [
     body: "Flag console.log calls.",
     enabled: true,
     version: 1,
+    project_context_paths: [],
   },
   {
     id: "sk2",
@@ -43,6 +45,7 @@ const SKILLS: Skill[] = [
     body: "Flag string-concatenated SQL.",
     enabled: false,
     version: 1,
+    project_context_paths: [],
   },
   {
     id: "sk3",
@@ -53,6 +56,7 @@ const SKILLS: Skill[] = [
     body: "Some custom rule.",
     enabled: true,
     version: 1,
+    project_context_paths: [],
   },
 ];
 

@@ -8,6 +8,7 @@ import type { ReviewRepository, FindingRow, PullRow, ReviewRow } from './reposit
 import { REVIEW_STRATEGY } from './constants.js';
 import { taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
+import { computeEffectiveAttachedPaths } from '../project-context/effective-set.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -226,6 +227,22 @@ export class ReviewRunExecutor {
       const linkedSkills = await this.agents.linkedSkills(agent.id);
       const skills = linkedSkills.filter((l) => l.skill.enabled).map((l) => l.skill.body);
 
+      // Project Context (SPEC-01) — effective attached documents: this agent's
+      // directly-attached paths, then each enabled linked skill's paths
+      // (dedup, first occurrence wins position — AC-17). Resolved against the
+      // PR's actual repository; unreadable paths are silently excluded (AC-20).
+      const effectivePaths = computeEffectiveAttachedPaths(
+        agent.projectContextPaths ?? [],
+        linkedSkills.filter((l) => l.skill.enabled).map((l) => l.skill.projectContextPaths ?? []),
+      );
+      const { specs, specsRead } =
+        effectivePaths.length > 0
+          ? await this.container.projectContextService.resolveForRun(
+              { owner: repo.owner, name: repo.name },
+              effectivePaths,
+            )
+          : { specs: [], specsRead: [] };
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -247,6 +264,10 @@ export class ReviewRunExecutor {
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
         ...(skills.length > 0 ? { skills } : {}),
+        // Project Context (SPEC-01) — resolved spec/doc/insight documents;
+        // assemblePrompt wraps each as untrusted + renders the existing
+        // `## Project context` slot unchanged (AC-19/AC-26/AC-27).
+        ...(specs.length > 0 ? { specs } : {}),
         // Machine-derived intent (DATA block; trusted scope rule is added by
         // assemblePrompt). Absent → section omitted; prompt is byte-identical
         // to today's (no hard dependency on intent being computed).
@@ -327,7 +348,9 @@ export class ReviewRunExecutor {
         })),
         raw_output: outcome.raw,
         memory_pulled: [],
-        specs_read: [],
+        specs_read: specsRead,
+        specs_tokens:
+          specs.length > 0 ? this.container.tokenizer.count(outcome.assembly.specs ?? '') : null,
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
         log: runLog.logFor(runId),

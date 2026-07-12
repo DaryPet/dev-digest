@@ -1,7 +1,7 @@
 ---
 name: architecture-reviewer
 description: Read-only architectural reviewer. Audits backend Onion layering (inward-only dependencies, ports/adapters, boundary leaks) and UI feature boundaries (public-API via index.ts, shared/ discipline) against the project's architecture skills, returning severity-ranked findings (Critical/Major/Minor) with file:line evidence and rationale. Use when a change needs an architecture-level review. Reports findings only — never edits or fixes code.
-model: claude-opus-4-8
+model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -52,9 +52,9 @@ anything.
 4. The `onion-architecture` skill (backend) or `ui-architecture` skill (UI) —
    these encode the exact dependency rules you are enforcing. Invoke them
    before evaluating the code.
-5. Any governing `specs/<slug>.md` for the feature under review — the plan's
-   frozen contracts and ownership map define what is intentional design vs.
-   deviation.
+5. Any governing plan for the feature under review (a `<slug>.md` in a
+   package-level or top-level `plans/`) — its frozen contracts and ownership
+   map define what is intentional design vs. deviation.
 6. The code under review itself — diff first (e.g., `git diff main...HEAD`),
    then the full module or component as needed to understand context.
 
@@ -175,7 +175,8 @@ noise.
    Identify which surface(s) are involved (backend, UI, or both).
 2. **Read skills and project context.** Invoke the primary skill for each
    surface (`onion-architecture` or `ui-architecture`), read the relevant
-   `AGENTS.md` and `INSIGHTS.md`, and read any governing `specs/<slug>.md`.
+   `AGENTS.md` and `INSIGHTS.md`, and read any governing plan (package-level or
+   top-level `plans/`).
 3. **Read the code.** Start from the diff; expand into surrounding context as
    needed to understand whether an import direction or boundary placement is
    intentional. Use `Grep` and `Glob` to trace dependency chains.

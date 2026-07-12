@@ -15,8 +15,9 @@ import type {
   Repo,
   PrMeta,
   PrDetail,
-  SpecFile,
-  IndexStatus,
+  ProjectContextCatalog,
+  ProjectContextDocument,
+  ProjectContextPreview,
 } from "../types";
 
 // ---- Settings (F1: GET/PUT /settings, POST /settings/test-connection) ----
@@ -119,19 +120,74 @@ export function usePullDetail(prId: string | number | null | undefined) {
   });
 }
 
-// ---- Project Context (A3 contract; safe to call once API exposes it) ----
-export function useContextFiles(repoId: string | null | undefined) {
+// ---- Project Context (SPEC-01: GET /repos/:id/context[/preview]) ----
+export interface ContextFilesOpts {
+  agentId?: string | null;
+  skillId?: string | null;
+}
+
+/** Catalog of discovered specs/docs/insights documents for a repo. Passing
+    agentId or skillId (mutually exclusive) additionally returns `.attachment`
+    (that agent's/skill's effective attached set + token estimates). */
+export function useContextFiles(repoId: string | null | undefined, opts?: ContextFilesOpts) {
+  const agentId = opts?.agentId ?? null;
+  const skillId = opts?.skillId ?? null;
   return useQuery({
-    queryKey: ["context", repoId],
-    queryFn: () => api.get<SpecFile[]>(`/repos/${repoId}/context`),
+    queryKey: ["context", repoId, agentId, skillId],
+    queryFn: () => {
+      const qs = new URLSearchParams();
+      if (agentId) qs.set("agent_id", agentId);
+      if (skillId) qs.set("skill_id", skillId);
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      return api.get<ProjectContextCatalog>(`/repos/${repoId}/context${suffix}`);
+    },
     enabled: !!repoId,
   });
 }
 
-export function useReindexContext() {
+/** Full content + "used by N agents" for one discovered document (Preview action). */
+export function useContextPreview(repoId: string | null | undefined, path: string | null | undefined) {
+  return useQuery({
+    queryKey: ["context-preview", repoId, path],
+    queryFn: () =>
+      api.get<ProjectContextPreview>(`/repos/${repoId}/context/preview?path=${encodeURIComponent(path!)}`),
+    enabled: !!repoId && !!path,
+  });
+}
+
+/** Create a new .md document in the repo clone (toolbar "+" / Upload). */
+export function useCreateContextFile(repoId: string | null | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (repoId: string) => api.post<IndexStatus>(`/repos/${repoId}/context/reindex`),
-    onSuccess: (_d, repoId) => qc.invalidateQueries({ queryKey: ["context", repoId] }),
+    mutationFn: (body: { path: string; content: string }) =>
+      api.post<ProjectContextDocument>(`/repos/${repoId}/context/files`, body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["context", repoId] });
+    },
+  });
+}
+
+/** Overwrite an existing document's content (preview pane Edit mode). */
+export function useUpdateContextFile(repoId: string | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { path: string; content: string }) =>
+      api.put<ProjectContextDocument>(`/repos/${repoId}/context/files`, body),
+    onSuccess: (_doc, body) => {
+      void qc.invalidateQueries({ queryKey: ["context-preview", repoId, body.path] });
+      void qc.invalidateQueries({ queryKey: ["context", repoId] });
+    },
+  });
+}
+
+/** Create a folder under one of the context roots (toolbar folder action). */
+export function useCreateContextFolder(repoId: string | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { path: string }) =>
+      api.post<{ path: string }>(`/repos/${repoId}/context/folders`, body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["context", repoId] });
+    },
   });
 }

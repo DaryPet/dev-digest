@@ -18,6 +18,7 @@ const SKILL: Skill = {
   enabled: true,
   version: 1,
   evidence_files: null,
+  project_context_paths: [],
 };
 
 function renderWithIntl(ui: React.ReactElement) {

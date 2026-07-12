@@ -88,6 +88,9 @@ export const RunTrace = z.object({
   raw_output: z.string(),
   memory_pulled: z.array(MemoryPulled),
   specs_read: z.array(z.string()),
+  /** Approximate injected token size of the assembled `## Project context`
+      (specs) block; null when the effective attached set was empty. */
+  specs_tokens: z.number().int().nullish(),
   log: z.array(RunLogLine),
 });
 export type RunTrace = z.infer<typeof RunTrace>;

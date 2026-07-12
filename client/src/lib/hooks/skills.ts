@@ -41,7 +41,9 @@ export function useCreateSkill() {
 
 export interface UpdateSkillInput {
   id: string;
-  patch: Partial<Pick<Skill, "name" | "description" | "type" | "body" | "enabled" | "evidence_files">>;
+  patch: Partial<
+    Pick<Skill, "name" | "description" | "type" | "body" | "enabled" | "evidence_files" | "project_context_paths">
+  >;
 }
 
 export function useUpdateSkill() {
@@ -52,6 +54,7 @@ export function useUpdateSkill() {
       qc.invalidateQueries({ queryKey: ["skills"] });
       qc.setQueryData(["skill", data.id], data);
       qc.invalidateQueries({ queryKey: ["skill-versions", data.id] });
+      qc.invalidateQueries({ queryKey: ["context"] });
     },
   });
 }

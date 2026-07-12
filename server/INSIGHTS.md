@@ -170,6 +170,35 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   reviews; a helper like this can also just be relocated out of `adapters/`.
   Evidence: `server/src/cli/review-command.ts`, `server/src/cli/git-diff.ts`.
 
+- **2026-07-11** — Adding a nullable jsonb column to `agents`/`skills` still
+  makes it a **required key** in the `$inferSelect` row type (`T | null`, not
+  optional), so every pre-existing test file that hand-builds a fully-typed
+  `AgentRow`/`SkillRow` object literal breaks with TS2741 — including files far
+  outside the feature's scope. Only `tsc --noEmit` surfaces this (vitest runs
+  esbuild and ignores types). Budget a repo-wide fixture sweep into any schema
+  column addition. Evidence: `src/db/schema/agents.ts` (`projectContextPaths`),
+  fixed fixtures in `src/cli/review-command.test.ts`,
+  `src/mcp/application/mcp-service.test.ts`.
+- **2026-07-11** — Passing an object literal whose keys have ZERO overlap with
+  an all-optional-fields interface triggers TS2559 ("no properties in common")
+  even through an intermediate `const` — TS weak-type detection, not the
+  excess-property check. A test that deliberately exercises a patch outside the
+  interface (e.g. proving `project_context_paths` is NOT a version-bump field)
+  needs `as unknown as InterfaceName`. Evidence:
+  `src/modules/agents/helpers.test.ts`, `src/modules/skills/helpers.test.ts`.
+- **2026-07-11** — A module with no tables of its own that needs the minimal
+  repo row (owner/name/clone path) queries `t.repos` directly in its own
+  workspace-scoped `repository.ts` — the `repo-intel/repository.ts`
+  `getRepoBasics` precedent — rather than inventing a `container.reposRepo`
+  accessor. Nuance to the 2026-07-03 cross-domain note: `project-context` also
+  constructs `new SkillsRepository(container.db)` as a named class field
+  (container exposes only `agentsRepo`/`reviewRepo`; the plan froze exactly one
+  additive getter) — that's now a third direct-construction site, so the
+  cross-cutting cleanup flagged there is due if another one appears. The named
+  field keeps it test-swappable via
+  `(svc as unknown as {repo}).repo = {...}`. Evidence:
+  `src/modules/project-context/{repository,service}.ts`.
+
 ## Tooling Notes
 
 - **2026-06-20** — `pnpm typecheck`/`pnpm test` abort in this env on a dep

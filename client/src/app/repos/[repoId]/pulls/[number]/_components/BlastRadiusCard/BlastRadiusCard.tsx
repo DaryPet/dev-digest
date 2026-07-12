@@ -114,6 +114,7 @@ interface GEpItem {
 }
 interface GGroup {
   symName: string;
+  symFile: string;
   symKind: string;
   symY: number;
   callers: GCallerItem[];
@@ -180,7 +181,7 @@ function buildGraphLayout(
     ];
 
     curY += groupH + G_GROUP_GAP;
-    return { symName: sym.name, symKind: sym.kind, symY, callers, eps };
+    return { symName: sym.name, symFile: sym.file, symKind: sym.kind, symY, callers, eps };
   });
 
   const totalH = groups.length === 0 ? 60 : curY - G_GROUP_GAP + 8;
@@ -207,13 +208,13 @@ function BlastGraph({
         aria-label="blast radius graph"
         style={{ display: "block" }}
       >
-        {groups.map(({ symName, symKind, symY, callers, eps }) => {
+        {groups.map(({ symName, symFile, symKind, symY, callers, eps }) => {
           const isCall = callable(symKind);
           const displayName = isCall ? `${symName}()` : symName;
           const symMidY = symY + G_NODE_H / 2;
 
           return (
-            <g key={symName}>
+            <g key={`${symFile}::${symName}`}>
               {/* Symbol node — blue tinted */}
               <rect
                 x={G_SYM_X}
@@ -529,17 +530,18 @@ export function BlastRadiusCard({ prId, repoFullName, headSha }: Props) {
                   (d) => d.symbol === sym.name,
                 );
                 const callerCount = impact?.callers.length ?? 0;
-                const isExpanded = expandedSet.has(sym.name);
+                const symKey = `${sym.file}::${sym.name}`;
+                const isExpanded = expandedSet.has(symKey);
                 const isCall = callable(sym.kind);
                 const displayName = isCall ? `${sym.name}()` : sym.name;
 
                 return (
-                  <div key={sym.name}>
+                  <div key={symKey}>
                     {/* Full-width band row — click anywhere to expand/collapse */}
                     <button
                       type="button"
                       style={s.symbolBand}
-                      onClick={() => toggleExpand(sym.name)}
+                      onClick={() => toggleExpand(symKey)}
                       aria-expanded={isExpanded}
                     >
                       <span style={s.symbolChevron}>

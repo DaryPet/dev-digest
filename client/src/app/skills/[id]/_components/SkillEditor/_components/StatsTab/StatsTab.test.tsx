@@ -18,6 +18,7 @@ const SKILL: Skill = {
   enabled: true,
   version: 1,
   evidence_files: null,
+  project_context_paths: [],
 };
 
 let mockAgents: Array<{ id: string; name: string; enabled: boolean }> = [];

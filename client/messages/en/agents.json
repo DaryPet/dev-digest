@@ -48,6 +48,7 @@
     "tabs": {
       "config": "Config",
       "skills": "Skills",
+      "context": "Context",
       "evals": "Evals",
       "stats": "Stats",
       "ci": "CI"
@@ -98,6 +99,26 @@
     "remove": "Remove",
     "moveUp": "Move up",
     "moveDown": "Move down"
+  },
+  "context": {
+    "header": "Project context — {attached} of {total} attached",
+    "footer": {
+      "tokenTotal": "≈{count} tokens across the attached documents",
+      "untrustedNote": "Injected as an untrusted \"## Project context\" block on every run."
+    },
+    "empty": {
+      "title": "No documents discovered",
+      "body": "This repo has no markdown files under specs/, docs/, or insights/ yet."
+    },
+    "contextDocs": {
+      "filterPlaceholder": "Filter documents…",
+      "preview": "Preview",
+      "category": {
+        "specs": "specs",
+        "docs": "docs",
+        "insights": "insights"
+      }
+    }
   },
   "mount": {
     "body": "Mount point for {owner}. The Agent Editor shell + tab routing are wired by A2 — {owner} renders this tab."

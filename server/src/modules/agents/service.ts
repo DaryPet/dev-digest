@@ -10,6 +10,8 @@ import type {
 } from '@devdigest/shared';
 import { AgentsRepository } from './repository.js';
 import { toAgentDto, toAgentVersionDto } from './helpers.js';
+import { ValidationError } from '../../platform/errors.js';
+import { isSafeRelativePath } from '../project-context/effective-set.js';
 
 /**
  * A2 — agents service. Business logic for the Agents tab + Agent Editor.
@@ -46,6 +48,19 @@ export interface UpdateAgentInput {
   ci_fail_on?: CiFailOn;
   repo_intel?: boolean;
   enabled?: boolean;
+  /** Ordered repo-relative paths of manually-attached Project Context
+   *  documents (AC-9/AC-10). Path only, never the document text. */
+  project_context_paths?: string[];
+}
+
+/**
+ * Defense-in-depth guard at the write boundary (attach paths only ever come
+ * from checkbox UI, never free text, but we don't trust that blindly).
+ */
+function assertSafeProjectContextPaths(paths: string[]): void {
+  if (paths.some((p) => !isSafeRelativePath(p))) {
+    throw new ValidationError('project_context_paths contains an unsafe path');
+  }
 }
 
 export class AgentsService {
@@ -93,6 +108,9 @@ export class AgentsService {
     id: string,
     patch: UpdateAgentInput,
   ): Promise<Agent | undefined> {
+    if (patch.project_context_paths !== undefined) {
+      assertSafeProjectContextPaths(patch.project_context_paths);
+    }
     const row = await this.repo.update(workspaceId, id, {
       ...(patch.name !== undefined ? { name: patch.name } : {}),
       ...(patch.description !== undefined ? { description: patch.description } : {}),
@@ -104,6 +122,9 @@ export class AgentsService {
       ...(patch.ci_fail_on !== undefined ? { ciFailOn: patch.ci_fail_on } : {}),
       ...(patch.repo_intel !== undefined ? { repoIntel: patch.repo_intel } : {}),
       ...(patch.enabled !== undefined ? { enabled: patch.enabled } : {}),
+      ...(patch.project_context_paths !== undefined
+        ? { projectContextPaths: patch.project_context_paths }
+        : {}),
     });
     return row ? toAgentDto(row) : undefined;
   }

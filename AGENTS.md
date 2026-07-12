@@ -28,8 +28,9 @@ as editing a do-not-touch path.
 Every new development TЗ (feature, bug fix, refactoring, chore) goes through
 the `dev-workflow` skill — invoke it before starting the work (`/dev-workflow`
 also triggers it explicitly). It classifies the TЗ (type + size + surfaces),
-then asks ALL gate questions in ONE upfront batch — researcher? planner?
-implementation (team / single / inline)? architecture review? — each with a
+then asks ALL gate questions in ONE upfront batch — researcher? development
+path (full SDD spec+plan / plan-only, no spec / inline)? implementation
+approach (team / single)? architecture review? — each with a
 recommendation. The developer answers once, before any work starts; the
 pipeline then runs autonomously to the end with no re-asking mid-flight.
 Tests, insights, and docs are automatic. For trivial XS changes the batch

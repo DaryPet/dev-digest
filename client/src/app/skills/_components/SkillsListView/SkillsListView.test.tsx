@@ -25,6 +25,7 @@ const SKILLS: Skill[] = [
     enabled: true,
     version: 1,
     evidence_files: null,
+    project_context_paths: [],
   },
   {
     id: "sk2",
@@ -36,6 +37,7 @@ const SKILLS: Skill[] = [
     enabled: false,
     version: 1,
     evidence_files: null,
+    project_context_paths: [],
   },
 ];
 

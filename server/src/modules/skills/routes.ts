@@ -39,6 +39,7 @@ const UpdateSkillBody = z.object({
   body: z.string().min(1).optional(),
   enabled: z.boolean().optional(),
   evidence_files: z.array(z.string()).nullish(),
+  project_context_paths: z.array(z.string()).optional(),
 });
 
 const ImportSkillBody = z.object({

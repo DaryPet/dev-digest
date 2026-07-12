@@ -3,6 +3,7 @@ import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import type { SkillSource, SkillType } from '@devdigest/shared';
 import { INITIAL_SKILL_VERSION } from './constants.js';
+import { isBodyChange } from './helpers.js';
 
 /**
  * A1 — skills data-access. Owns `skills` and the `skill_versions` body-history
@@ -27,6 +28,7 @@ export interface InsertSkill {
   body: string;
   enabled?: boolean;
   evidenceFiles?: string[] | null;
+  projectContextPaths?: string[] | null;
 }
 
 export interface UpdateSkill {
@@ -36,6 +38,9 @@ export interface UpdateSkill {
   body?: string;
   enabled?: boolean;
   evidenceFiles?: string[] | null;
+  /** Ordered repo-relative paths of manually-attached Project Context
+   *  documents. Not part of the body — never bumps `version`. */
+  projectContextPaths?: string[] | null;
 }
 
 export class SkillsRepository {
@@ -71,6 +76,7 @@ export class SkillsRepository {
         enabled: values.enabled ?? true,
         version: INITIAL_SKILL_VERSION,
         evidenceFiles: values.evidenceFiles ?? null,
+        projectContextPaths: values.projectContextPaths ?? null,
       })
       .returning();
     await this.snapshotVersion(row!.id, INITIAL_SKILL_VERSION, row!.body);
@@ -89,7 +95,7 @@ export class SkillsRepository {
     const existing = await this.getById(workspaceId, id);
     if (!existing) return undefined;
 
-    const bodyChanged = patch.body !== undefined && patch.body !== existing.body;
+    const bodyChanged = isBodyChange(existing, patch);
     const nextVersion = bodyChanged ? existing.version + 1 : existing.version;
 
     const [row] = await this.db
@@ -101,6 +107,9 @@ export class SkillsRepository {
         ...(patch.body !== undefined ? { body: patch.body } : {}),
         ...(patch.enabled !== undefined ? { enabled: patch.enabled } : {}),
         ...(patch.evidenceFiles !== undefined ? { evidenceFiles: patch.evidenceFiles } : {}),
+        ...(patch.projectContextPaths !== undefined
+          ? { projectContextPaths: patch.projectContextPaths }
+          : {}),
         ...(bodyChanged ? { version: nextVersion } : {}),
       })
       .where(and(eq(t.skills.workspaceId, workspaceId), eq(t.skills.id, id)))

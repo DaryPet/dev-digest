@@ -17,6 +17,10 @@ export const skills = pgTable('skills', {
   enabled: boolean('enabled').notNull().default(true),
   version: integer('version').notNull().default(1),
   evidenceFiles: jsonb('evidence_files').$type<string[]>(),
+  // Ordered repo-relative paths of manually-attached Project Context documents
+  // (specs/docs/insights .md files) — path only, never the document text.
+  // Nullable, no DB default (mirrors evidenceFiles above).
+  projectContextPaths: jsonb('project_context_paths').$type<string[]>(),
   createdAt: now(),
 });
 

@@ -3,6 +3,8 @@ import type { Skill, SkillSource, SkillType } from '@devdigest/shared';
 import { SkillsRepository } from './repository.js';
 import { toSkillDto } from './helpers.js';
 import { decodeUpload, parseSkillImport, type SkillImportResult } from './import.js';
+import { ValidationError } from '../../platform/errors.js';
+import { isSafeRelativePath } from '../project-context/effective-set.js';
 
 /**
  * A1 — skills service. Business logic for the Skills Lab (list/grid + editor)
@@ -34,6 +36,19 @@ export interface UpdateSkillInput {
   body?: string;
   enabled?: boolean;
   evidence_files?: string[] | null;
+  /** Ordered repo-relative paths of manually-attached Project Context
+   *  documents (AC-15). Path only, never the document text. */
+  project_context_paths?: string[] | null;
+}
+
+/**
+ * Defense-in-depth guard at the write boundary (attach paths only ever come
+ * from checkbox UI, never free text, but we don't trust that blindly).
+ */
+function assertSafeProjectContextPaths(paths: string[]): void {
+  if (paths.some((p) => !isSafeRelativePath(p))) {
+    throw new ValidationError('project_context_paths contains an unsafe path');
+  }
 }
 
 /** A single body snapshot (DTO over a `skill_versions` row). */
@@ -80,6 +95,9 @@ export class SkillsService {
     id: string,
     patch: UpdateSkillInput,
   ): Promise<Skill | undefined> {
+    if (patch.project_context_paths) {
+      assertSafeProjectContextPaths(patch.project_context_paths);
+    }
     const row = await this.repo.update(workspaceId, id, {
       ...(patch.name !== undefined ? { name: patch.name } : {}),
       ...(patch.description !== undefined ? { description: patch.description } : {}),
@@ -87,6 +105,9 @@ export class SkillsService {
       ...(patch.body !== undefined ? { body: patch.body } : {}),
       ...(patch.enabled !== undefined ? { enabled: patch.enabled } : {}),
       ...(patch.evidence_files !== undefined ? { evidenceFiles: patch.evidence_files } : {}),
+      ...(patch.project_context_paths !== undefined
+        ? { projectContextPaths: patch.project_context_paths }
+        : {}),
     });
     return row ? toSkillDto(row) : undefined;
   }
