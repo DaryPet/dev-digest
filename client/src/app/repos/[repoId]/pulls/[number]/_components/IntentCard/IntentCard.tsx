@@ -2,8 +2,10 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Button, Icon, Skeleton } from "@devdigest/ui";
+import { Button, Icon, Skeleton, SEV, CAT } from "@devdigest/ui";
+import type { BriefRisk } from "@devdigest/shared";
 import { useIntent, useComputeIntent } from "@/lib/hooks/intent";
+import { useBrief } from "@/lib/hooks/brief";
 import { s } from "./styles";
 
 interface IntentCardProps {
@@ -32,14 +34,93 @@ function ScopeList({ items, label }: ScopeListProps) {
   );
 }
 
+/** Keyword-based presentational icon/color pick for a risk item — reuses the
+ *  existing CAT/SEV tokens (never a hand-rolled color, per SPEC-02's
+ *  Non-functional Consistency rule). Purely cosmetic grouping of already-
+ *  grounded data; the Brief schema itself carries no category field. */
+function riskVisual(risk: BriefRisk): { icon: typeof Icon.AlertTriangle; color: string } {
+  const haystack = `${risk.title} ${risk.explanation} ${risk.file_refs.join(" ")}`.toLowerCase();
+  if (
+    /\b(auth|token|session|credential|secret|password|jwt|login|security|vulnerab|injection|xss|traversal|exploit|csrf|permission)\b/.test(
+      haystack,
+    )
+  ) {
+    return { icon: Icon[CAT.security.icon], color: SEV.CRITICAL.c };
+  }
+  if (/package\.json|\bdependenc(y|ies)\b|\bnpm\b|\byarn\b|\bpnpm\b/.test(haystack)) {
+    return { icon: Icon.Boxes, color: SEV.WARNING.c };
+  }
+  if (/\b(redis|latency|cache|n\+1|query|round-trip|performance|timeout|slow)\b/.test(haystack)) {
+    return { icon: Icon[CAT.perf.icon], color: "var(--text-muted)" };
+  }
+  if (/\b(migration|schema|database)\b|\/migrations\//.test(haystack)) {
+    return { icon: Icon.Database, color: SEV.WARNING.c };
+  }
+  if (/\bbugs?\b|\bregression|\bedge case|\breintroduce|\bbreak existing/.test(haystack)) {
+    return { icon: Icon.Bug, color: "var(--text-muted)" };
+  }
+  return { icon: Icon.AlertTriangle, color: SEV.WARNING.c };
+}
+
+/** Risk areas list — sourced from the Brief's grounded `risks[]` (SPEC-02).
+ *  Each item cites at least one real file/endpoint (`file_refs`); expandable
+ *  to show the model's `explanation`. LLM-derived text rendered as plain
+ *  text only — never dangerouslySetInnerHTML. */
+function RiskAreasList({ risks, emptyLabel }: { risks: BriefRisk[]; emptyLabel: string }) {
+  const [openIndex, setOpenIndex] = React.useState<number | null>(null);
+
+  if (risks.length === 0) return <span style={s.emptyHint}>{emptyLabel}</span>;
+
+  return (
+    <div style={s.riskList}>
+      {risks.map((risk, i) => {
+        const isOpen = openIndex === i;
+        const { icon: RiskIcon, color: riskColor } = riskVisual(risk);
+        return (
+          <div key={i} style={s.riskItem}>
+            <button
+              type="button"
+              style={s.riskItemHeader}
+              aria-expanded={isOpen}
+              onClick={() => setOpenIndex(isOpen ? null : i)}
+            >
+              <RiskIcon size={14} style={{ color: riskColor }} aria-hidden />
+              <span style={s.riskItemText}>
+                <span style={s.riskItemTitle}>{risk.title}</span>
+                {risk.file_refs.length > 0 && (
+                  <span className="mono" style={s.riskItemRefs}>
+                    {risk.file_refs.join(", ")}
+                  </span>
+                )}
+              </span>
+              <Icon.ChevronDown
+                size={14}
+                style={{
+                  ...s.riskChevron,
+                  transform: isOpen ? "rotate(180deg)" : undefined,
+                }}
+                aria-hidden
+              />
+            </button>
+            {isOpen && <p style={s.riskExplanation}>{risk.explanation}</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Intent card for the PR Overview tab.
  *  Shows the machine-derived PR intent: quoted summary, side-by-side
- *  In-scope / Out-of-scope columns, and a Recompute button. LLM-derived text
- *  is rendered as plain text only — never dangerouslySetInnerHTML. */
+ *  In-scope / Out-of-scope columns, the Brief's grounded Risk areas, and a
+ *  Recompute button. LLM-derived text is rendered as plain text only — never
+ *  dangerouslySetInnerHTML. */
 export function IntentCard({ prId }: IntentCardProps) {
   const t = useTranslations("brief");
   const { data, isLoading } = useIntent(prId);
   const compute = useComputeIntent(prId);
+  const { data: briefData } = useBrief(prId);
+  const risks = briefData?.brief.risks ?? [];
 
   return (
     <div style={s.card}>
@@ -97,14 +178,14 @@ export function IntentCard({ prId }: IntentCardProps) {
             </div>
           </div>
 
-          {/* Risk areas — the risk-analysis backend is a separate feature that
-              doesn't exist yet; honest empty state, never fabricated chips. */}
+          {/* Risk areas — sourced from the Brief's grounded risks[] (SPEC-02);
+              honest empty state when none survived grounding. */}
           <div style={s.scopeCol}>
             <div style={s.scopeHeader}>
               <Icon.AlertTriangle size={14} style={{ color: "var(--text-muted)" }} aria-hidden />
               {t("riskAreas")}
             </div>
-            <span style={s.emptyHint}>{t("noRisks")}</span>
+            <RiskAreasList risks={risks} emptyLabel={t("noRisks")} />
           </div>
         </>
       )}

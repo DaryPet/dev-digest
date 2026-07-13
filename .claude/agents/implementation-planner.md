@@ -225,9 +225,13 @@ confirmed with the developer, and why>
 
 ### 9. Tasks
 For each task: id, surface (backend|ui), goal, dependencies (task ids /
-"none"), merge order, and **skills to apply** (explicit list from the catalog
-above). If execution mode is multi-agent, note which tasks run in parallel; if
-single-agent, list them in the order the one agent implements them.
+"none"), merge order, **skills to apply** (explicit list from the catalog
+above), and the task's own **done-conditions** — the specific, checkable
+outcomes that mark this task complete, stated inline so the implementer can
+verify against them without opening the spec. (This is HOW/verification detail
+per task, not a restatement of the spec's global ACs — §3 still references the
+spec for those.) If execution mode is multi-agent, note which tasks run in
+parallel; if single-agent, list them in the order the one agent implements them.
 
 ### 10. Test commands per scope
 <exact commands each implementer runs to verify its scope>
@@ -300,6 +304,8 @@ matches the feature.
 - Every "affected" claim points to a real path. Distinguish what you verified
   from what you infer — label inferences.
 - The plan must be self-sufficient: an implementer reading only its assigned
-  task, the frozen contracts, and the ownership map should be able to build
-  without asking you anything.
+  task (goal + done-conditions), the frozen contracts, and the ownership map
+  should be able to build without asking you anything — and without opening the
+  spec. If a task can't be verified from the plan alone, its done-conditions
+  are incomplete; fix the plan, don't push the implementer to the spec.
 </content>

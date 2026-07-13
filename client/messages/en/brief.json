@@ -34,5 +34,15 @@
     "tree": "Tree",
     "graph": "Graph",
     "moreCallers": "+{count} more"
+  },
+  "riskLevel": {
+    "high": "High risk",
+    "medium": "Medium risk",
+    "low": "Low risk"
+  },
+  "reviewFocus": {
+    "title": "Review focus — read these first",
+    "empty": "No specific files flagged for focused review.",
+    "loading": "Computing review focus…"
   }
 }

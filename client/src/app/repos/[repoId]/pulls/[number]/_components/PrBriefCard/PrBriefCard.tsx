@@ -2,8 +2,9 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Skeleton } from "@devdigest/ui";
+import { Button, Skeleton } from "@devdigest/ui";
 import { usePrReviews, usePrRuns } from "@/lib/hooks/reviews";
+import { useBrief, useRecomputeBrief } from "@/lib/hooks/brief";
 import type { ReviewRecord } from "@devdigest/shared";
 import { VerdictBanner } from "../VerdictBanner";
 import { s } from "./styles";
@@ -56,49 +57,79 @@ function selectMostBlockingReview(reviews: ReviewRecord[]): ReviewRecord | null 
   }, first);
 }
 
-/** PR BRIEF verdict card for the Overview tab (per the PR-page design):
- *  most-blocking verdict across all agents' latest passes + findings/blockers
- *  badge + summary + PR score ring with the run's cost/tokens underneath.
- *  Honest empty state when no review has run yet — no fabricated data. */
+/** PR BRIEF card for the Overview tab (per the PR-page design, amended by
+ *  SPEC-02): narrative (`what`+`why`) and risk-level color/label come from the
+ *  Brief (`useBrief`/`useRecomputeBrief`); the findings/blockers pill and score
+ *  ring stay sourced from the PR's reviews (`usePrReviews`/`usePrRuns`), via
+ *  the same `selectMostBlockingReview` selection unchanged from before — that
+ *  data is unrelated to the Brief and must keep working even when the Brief
+ *  request fails. Honest empty state when the Brief isn't available yet, with
+ *  a Recompute button so the user can retry — no fabricated data. */
 export function PrBriefCard({ prId }: PrBriefCardProps) {
   const t = useTranslations("brief");
   const id = String(prId);
-  const { data: reviews, isLoading } = usePrReviews(id);
+  const { data: reviews } = usePrReviews(id);
   const { data: runs } = usePrRuns(id);
+  const { data: briefData, isLoading: briefLoading, isError: briefError } = useBrief(id);
+  const recompute = useRecomputeBrief(id);
 
-  if (isLoading) {
-    return (
-      <div style={s.emptyCard}>
-        <Skeleton height={18} width={280} />
-        <Skeleton height={14} width="70%" />
-      </div>
-    );
-  }
-
-  // Select the most-blocking verdict across all agents' latest review passes.
+  // Findings·blockers pill + score ring stay independent of the Brief request.
   const selected = selectMostBlockingReview(reviews ?? []);
-  if (!selected || !selected.verdict) {
+  const run = selected?.run_id ? runs?.find((r) => r.run_id === selected.run_id) : undefined;
+
+  const recomputeDisabled = briefLoading || recompute.isPending;
+  const recomputeBtn = (
+    <Button
+      kind="secondary"
+      size="sm"
+      icon="RefreshCw"
+      loading={recompute.isPending}
+      disabled={recomputeDisabled}
+      onClick={() => recompute.mutate()}
+    >
+      {t("recompute")}
+    </Button>
+  );
+
+  if (briefLoading) {
     return (
-      <div style={s.emptyCard}>
-        <div style={s.emptyTitle}>{t("unavailable")}</div>
-        <div style={s.emptyHint}>{t("unavailableHint")}</div>
+      <div style={s.wrap}>
+        <div style={s.emptyCard}>
+          <Skeleton height={18} width={280} />
+          <Skeleton height={14} width="70%" />
+        </div>
+        <div style={s.recomputeRow}>{recomputeBtn}</div>
       </div>
     );
   }
 
-  // Cost/tokens/blockers live on the run row that produced the selected review.
-  const run = selected.run_id ? runs?.find((r) => r.run_id === selected.run_id) : undefined;
+  const brief = briefData?.brief;
+  if (!brief || briefError) {
+    return (
+      <div style={s.wrap}>
+        <div style={s.emptyCard}>
+          <div style={s.emptyTitle}>{t("unavailable")}</div>
+          <div style={s.emptyHint}>{t("unavailableHint")}</div>
+        </div>
+        <div style={s.recomputeRow}>{recomputeBtn}</div>
+      </div>
+    );
+  }
 
   return (
-    <VerdictBanner
-      verdict={selected.verdict}
-      summary={selected.summary}
-      score={selected.score}
-      findingsCount={selected.findings.length}
-      blockers={run?.blockers ?? 0}
-      cost={run?.cost_usd ?? null}
-      tokensIn={run?.tokens_in}
-      tokensOut={run?.tokens_out}
-    />
+    <div style={s.wrap}>
+      <VerdictBanner
+        riskLevel={brief.risk_level}
+        riskLabel={t(`riskLevel.${brief.risk_level}`)}
+        summary={`${brief.what} ${brief.why}`}
+        score={selected?.score ?? null}
+        findingsCount={selected?.findings.length ?? 0}
+        blockers={run?.blockers ?? 0}
+        cost={run?.cost_usd ?? null}
+        tokensIn={run?.tokens_in}
+        tokensOut={run?.tokens_out}
+      />
+      <div style={s.recomputeRow}>{recomputeBtn}</div>
+    </div>
   );
 }

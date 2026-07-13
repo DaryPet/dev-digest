@@ -6,6 +6,7 @@ import { SectionLabel } from "@devdigest/ui";
 import { IntentCard } from "../IntentCard/IntentCard";
 import { PrBriefCard } from "../PrBriefCard";
 import { BlastRadiusCard } from "../BlastRadiusCard";
+import { ReviewFocusSection } from "../ReviewFocusSection";
 import { s } from "./styles";
 
 interface OverviewTabProps {
@@ -30,6 +31,8 @@ export function OverviewTab({ prId, repoFullName, headSha }: OverviewTabProps) {
         <IntentCard prId={prId} />
         <BlastRadiusCard prId={prId} repoFullName={repoFullName} headSha={headSha} />
       </div>
+
+      <ReviewFocusSection prId={prId} repoFullName={repoFullName} headSha={headSha} />
     </>
   );
 }

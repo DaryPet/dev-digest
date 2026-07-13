@@ -16,10 +16,19 @@ vi.mock("@/lib/hooks/intent", () => ({
   useComputeIntent: vi.fn(),
 }));
 
+// IntentCard also reads the Brief's risks[] (SPEC-02) via the hook shared
+// with PrBriefCard/ReviewFocusSection — mock it too, per the composite-test
+// rule (client/INSIGHTS.md 2026-07-06).
+vi.mock("@/lib/hooks/brief", () => ({
+  useBrief: vi.fn(),
+}));
+
 import { useIntent, useComputeIntent } from "@/lib/hooks/intent";
+import { useBrief } from "@/lib/hooks/brief";
 
 const mockUseIntent = vi.mocked(useIntent);
 const mockUseComputeIntent = vi.mocked(useComputeIntent);
+const mockUseBrief = vi.mocked(useBrief);
 
 // Helpers to build partial mock return values without satisfying the full
 // TanStack Query return types (double-cast through unknown).
@@ -29,16 +38,21 @@ function intentResult(data: Parameters<typeof useIntent>[0] extends infer _ ? un
 function computeResult(isPending: boolean) {
   return { mutate, isPending } as unknown as ReturnType<typeof useComputeIntent>;
 }
+function briefResult(risks: unknown[] = []) {
+  return { data: { brief: { risks } } } as unknown as ReturnType<typeof useBrief>;
+}
 
 interface RenderOptions {
   computePending?: boolean;
+  risks?: unknown[];
 }
 
 function renderCard(
   prId: string | number = "pr-1",
-  { computePending = false }: RenderOptions = {},
+  { computePending = false, risks = [] }: RenderOptions = {},
 ) {
   mockUseComputeIntent.mockReturnValue(computeResult(computePending));
+  mockUseBrief.mockReturnValue(briefResult(risks));
 
   const qc = new QueryClient();
   return render(
@@ -143,5 +157,55 @@ describe("IntentCard", () => {
     // Both in_scope and out_of_scope are empty — renders "—" placeholders
     const dashes = screen.getAllByText("—");
     expect(dashes.length).toBe(2);
+  });
+
+  it("shows an honest empty state when the Brief has no risks", () => {
+    mockUseIntent.mockReturnValue(
+      intentResult({ intent: { intent: "Minor fix.", in_scope: [], out_of_scope: [] } }, false),
+    );
+
+    renderCard("pr-1", { risks: [] });
+    expect(screen.getByText("No notable risks flagged.")).toBeInTheDocument();
+  });
+
+  it("renders the Brief's grounded risks[] with title and file refs", () => {
+    mockUseIntent.mockReturnValue(
+      intentResult({ intent: { intent: "Minor fix.", in_scope: [], out_of_scope: [] } }, false),
+    );
+
+    renderCard("pr-1", {
+      risks: [
+        {
+          title: "Auth surface touched",
+          explanation: "The rate limiter wraps the login route.",
+          file_refs: ["src/middleware/ratelimit.ts:12-18"],
+        },
+      ],
+    });
+
+    expect(screen.getByText("Auth surface touched")).toBeInTheDocument();
+    expect(screen.getByText("src/middleware/ratelimit.ts:12-18")).toBeInTheDocument();
+    expect(
+      screen.queryByText("The rate limiter wraps the login route."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("expands a risk item to show its explanation on click", () => {
+    mockUseIntent.mockReturnValue(
+      intentResult({ intent: { intent: "Minor fix.", in_scope: [], out_of_scope: [] } }, false),
+    );
+
+    renderCard("pr-1", {
+      risks: [
+        {
+          title: "New dependency: ioredis",
+          explanation: "Adds a Redis client dependency.",
+          file_refs: ["package.json:34"],
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /New dependency: ioredis/ }));
+    expect(screen.getByText("Adds a Redis client dependency.")).toBeInTheDocument();
   });
 });

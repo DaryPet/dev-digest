@@ -38,12 +38,18 @@ your scope pass. Nothing more.
 
 ## Read first (on the spot, before writing)
 
-1. **The Implementation Plan.** The orchestrator that spawned you gives you the
-   plan's path (a `<feature-slug>.md` in a `plans/` folder — package-level or
-   top-level) and your task id. `Read` that file
-   first, then focus on your assigned task, the frozen interface contracts, and
-   the directory ownership map. If no plan path or task id was provided, stop
-   and ask for them — do not start implementing from a vague description.
+1. **The Implementation Plan — your slice only.** The orchestrator that spawned
+   you gives you the plan's path (a `<feature-slug>.md` in a `plans/` folder —
+   package-level or top-level) and your task id. `Read` only what your task
+   needs: your assigned task (goal + done-conditions), the frozen interface
+   contracts (§6), the directory ownership map (§7), and the plan's distilled
+   insights (§11) — not every other task's detail. Everything you need to build
+   and verify your task is in the plan; **do not open the spec** (`SPEC-NN`) —
+   the plan's per-task done-conditions are your acceptance target. If your
+   task's done-conditions are missing or you genuinely can't verify without the
+   spec, that's a plan defect — stop and report it rather than reading around
+   it. If no plan path or task id was provided, stop and ask for them — do not
+   start implementing from a vague description.
 2. The `AGENTS.md` of the package you're working in (`server/AGENTS.md`,
    `client/AGENTS.md`, `reviewer-core/AGENTS.md`, `e2e/AGENTS.md`).
 3. **The `INSIGHTS.md` of the package you're working in** — read it locally,

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 /**
  * PR Brief building blocks: Intent, Blast radius, Risks, PR History,
- * Smart Diff. Composed into PrBrief.
+ * Smart Diff. Composed into Brief (SPEC-02 PR Why + Risk Brief).
  */
 
 // ---- Intent ----
@@ -112,11 +112,27 @@ export const SmartDiff = z.object({
 });
 export type SmartDiff = z.infer<typeof SmartDiff>;
 
-// ---- Composed PR Brief (pr_brief.json) ----
-export const PrBrief = z.object({
-  intent: Intent,
-  blast: BlastRadius,
-  risks: Risks,
-  history: PrHistory,
+// ---- PR Why + Risk Brief (SPEC-02; pr_brief.json) ----
+export const BriefRisk = z.object({
+  title: z.string(),
+  explanation: z.string(),
+  /** File paths / "METHOD /path" endpoint strings / cron strings this risk cites. */
+  file_refs: z.array(z.string()),
 });
-export type PrBrief = z.infer<typeof PrBrief>;
+export type BriefRisk = z.infer<typeof BriefRisk>;
+
+export const BriefReviewFocusItem = z.object({
+  file: z.string(),
+  line: z.number().int(),
+  reason: z.string(),
+});
+export type BriefReviewFocusItem = z.infer<typeof BriefReviewFocusItem>;
+
+export const Brief = z.object({
+  what: z.string(),
+  why: z.string(),
+  risk_level: RiskSeverity,
+  risks: z.array(BriefRisk),
+  review_focus: z.array(BriefReviewFocusItem),
+});
+export type Brief = z.infer<typeof Brief>;

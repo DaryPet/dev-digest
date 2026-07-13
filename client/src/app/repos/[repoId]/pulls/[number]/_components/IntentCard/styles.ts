@@ -109,4 +109,63 @@ export const s = {
     fontSize: 13,
     color: "var(--text-muted)",
   } satisfies CSSProperties,
+
+  riskList: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 8,
+  } satisfies CSSProperties,
+
+  riskItem: {
+    border: "1px solid var(--border)",
+    borderRadius: 8,
+    overflow: "hidden",
+  } satisfies CSSProperties,
+
+  riskItemHeader: {
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "10px 12px",
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    textAlign: "left" as const,
+    font: "inherit",
+    color: "inherit",
+  } satisfies CSSProperties,
+
+  riskItemText: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 3,
+    minWidth: 0,
+    flex: 1,
+  } satisfies CSSProperties,
+
+  riskItemTitle: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: "var(--text-primary)",
+  } satisfies CSSProperties,
+
+  riskItemRefs: {
+    fontSize: 12.5,
+    color: "var(--accent-text)",
+    overflowWrap: "anywhere" as const,
+  } satisfies CSSProperties,
+
+  riskChevron: {
+    flexShrink: 0,
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
+
+  riskExplanation: {
+    margin: 0,
+    padding: "0 12px 12px 36px",
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: "var(--text-secondary)",
+  } satisfies CSSProperties,
 } as const;
