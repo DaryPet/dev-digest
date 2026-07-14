@@ -26,15 +26,25 @@ vi.mock("@/lib/hooks/blast", () => ({
   useBlastRadius: vi.fn(),
 }));
 
+// PrBriefCard and ReviewFocusSection both gained useBrief/useRecomputeBrief —
+// the composite test must mock them too (client/INSIGHTS.md 2026-07-06).
+vi.mock("@/lib/hooks/brief", () => ({
+  useBrief: vi.fn(),
+  useRecomputeBrief: vi.fn(),
+}));
+
 import { usePrReviews, usePrRuns } from "@/lib/hooks/reviews";
 import { useIntent, useComputeIntent } from "@/lib/hooks/intent";
 import { useBlastRadius } from "@/lib/hooks/blast";
+import { useBrief, useRecomputeBrief } from "@/lib/hooks/brief";
 
 const mockUsePrReviews = vi.mocked(usePrReviews);
 const mockUsePrRuns = vi.mocked(usePrRuns);
 const mockUseIntent = vi.mocked(useIntent);
 const mockUseComputeIntent = vi.mocked(useComputeIntent);
 const mockUseBlastRadius = vi.mocked(useBlastRadius);
+const mockUseBrief = vi.mocked(useBrief);
+const mockUseRecomputeBrief = vi.mocked(useRecomputeBrief);
 
 /** Build a minimal TanStack Query stub — casts through unknown per INSIGHTS. */
 function q<T extends (...args: never[]) => unknown>(
@@ -68,6 +78,10 @@ function setupEmptyState() {
   );
   mockUseBlastRadius.mockReturnValue(
     q<typeof useBlastRadius>(undefined, { isError: true }),
+  );
+  mockUseBrief.mockReturnValue(q<typeof useBrief>(undefined, { isError: true }));
+  mockUseRecomputeBrief.mockReturnValue(
+    q<typeof useRecomputeBrief>(undefined, { mutate: vi.fn(), isPending: false }),
   );
 }
 

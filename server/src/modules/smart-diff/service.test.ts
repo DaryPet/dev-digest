@@ -17,9 +17,15 @@ import { SPLIT_TOTAL_LINES_THRESHOLD, SPLIT_CHORE_NAME, ROOT_SPLIT_NAME } from '
 
 type StubPull = { id: string; workspaceId: string };
 type StubFile = { path: string; additions: number; deletions: number };
-type StubFinding = { file: string; startLine: number; dismissedAt: Date | null };
+type StubFinding = { file: string; startLine: number; dismissedAt: Date | null; severity?: string };
 type StubReviewEntry = {
-  review: { id: string; kind: 'review' | 'summary'; createdAt: Date };
+  review: {
+    id: string;
+    kind: 'review' | 'summary';
+    createdAt: Date;
+    verdict?: 'approve' | 'comment' | 'request_changes' | null;
+    agentId?: string | null;
+  };
   findings: StubFinding[];
 };
 
@@ -131,7 +137,7 @@ describe('SmartDiffService.getSmartDiff', () => {
         ],
         reviews: [
           {
-            review: { id: 'rev-1', kind: 'review', createdAt: reviewDate },
+            review: { id: 'rev-1', kind: 'review', createdAt: reviewDate, verdict: 'comment' },
             findings: [
               { file: 'src/beta.ts', startLine: 10, dismissedAt: null },
             ],
@@ -158,12 +164,12 @@ describe('SmartDiffService.getSmartDiff', () => {
         files: [{ path: 'src/service.ts', additions: 50, deletions: 10 }],
         reviews: [
           {
-            review: { id: 'rev-1', kind: 'review', createdAt: reviewDate },
+            review: { id: 'rev-1', kind: 'review', createdAt: reviewDate, verdict: 'comment' },
             findings: [
-              { file: 'src/service.ts', startLine: 30, dismissedAt: null },    // kept
-              { file: 'src/service.ts', startLine: 10, dismissedAt: null },    // kept
-              { file: 'src/service.ts', startLine: 10, dismissedAt: null },    // dup -> deduped
-              { file: 'src/service.ts', startLine: 5, dismissedAt: new Date() }, // dismissed -> excluded
+              { file: 'src/service.ts', startLine: 30, dismissedAt: null, severity: 'CRITICAL' },    // kept
+              { file: 'src/service.ts', startLine: 10, dismissedAt: null, severity: 'WARNING' },    // kept
+              { file: 'src/service.ts', startLine: 10, dismissedAt: null, severity: 'SUGGESTION' },    // dup -> deduped (lower severity loses)
+              { file: 'src/service.ts', startLine: 5, dismissedAt: new Date(), severity: 'CRITICAL' }, // dismissed -> excluded
             ],
           },
         ],
@@ -171,7 +177,10 @@ describe('SmartDiffService.getSmartDiff', () => {
     );
     const result = await service.getSmartDiff('ws-1', 'pr-1');
     const file = result.groups[0]!.files[0]!;
-    expect(file.finding_lines).toEqual([10, 30]); // deduped, sorted asc, dismissed excluded
+    expect(file.finding_lines).toEqual([
+      { line: 10, severity: 'WARNING' },
+      { line: 30, severity: 'CRITICAL' },
+    ]); // deduped (highest severity wins per line), sorted asc, dismissed excluded
   });
 
   // ---- only the LATEST review of kind='review' is used --------------------
@@ -185,23 +194,25 @@ describe('SmartDiffService.getSmartDiff', () => {
         pull: PULL,
         files: [{ path: 'src/service.ts', additions: 10, deletions: 0 }],
         reviews: [
-          // Newest first (reviewsForPull contract).
+          // Newest first (reviewsForPull contract). Both review-kind entries
+          // carry the same verdict rank, so the newest-first tie-break picks
+          // rev-newest (selectMostBlockingReview, same as PrBriefCard's).
           {
-            review: { id: 'rev-newest', kind: 'review', createdAt: newer },
+            review: { id: 'rev-newest', kind: 'review', createdAt: newer, verdict: 'comment' },
             findings: [
-              { file: 'src/service.ts', startLine: 7, dismissedAt: null },
+              { file: 'src/service.ts', startLine: 7, dismissedAt: null, severity: 'WARNING' },
             ],
           },
           {
             // This summary's findings must not appear (kind !== 'review').
-            review: { id: 'sum-1', kind: 'summary', createdAt: newer },
+            review: { id: 'sum-1', kind: 'summary', createdAt: newer, verdict: 'comment' },
             findings: [
               { file: 'src/service.ts', startLine: 99, dismissedAt: null },
             ],
           },
           {
-            // Older review -- must not contribute.
-            review: { id: 'rev-old', kind: 'review', createdAt: older },
+            // Older review -- must not contribute (loses the newest-first tie-break).
+            review: { id: 'rev-old', kind: 'review', createdAt: older, verdict: 'comment' },
             findings: [
               { file: 'src/service.ts', startLine: 42, dismissedAt: null },
             ],
@@ -211,7 +222,64 @@ describe('SmartDiffService.getSmartDiff', () => {
     );
     const result = await service.getSmartDiff('ws-1', 'pr-1');
     const file = result.groups[0]!.files[0]!;
-    expect(file.finding_lines).toEqual([7]); // only from rev-newest
+    expect(file.finding_lines).toEqual([{ line: 7, severity: 'WARNING' }]); // only from rev-newest
+  });
+
+  // ---- multi-agent batch: the blocking review must win, not list order ----
+
+  it('picks the most-blocking review across a same-timestamp multi-agent batch, not merely the first list entry', async () => {
+    const batchTime = new Date('2026-07-13T20:01:42Z');
+    const service = new SmartDiffService(
+      noLlmContainer,
+      makeRepo({
+        pull: PULL,
+        files: [{ path: 'src/middleware/ratelimit.ts', additions: 20, deletions: 0 }],
+        reviews: [
+          // Listed first, but it's an approve with no findings -- a naive
+          // "first in list" pick would wrongly select this one.
+          {
+            review: {
+              id: 'rev-performance',
+              kind: 'review',
+              createdAt: batchTime,
+              verdict: 'approve',
+              agentId: 'agent-performance',
+            },
+            findings: [],
+          },
+          // The actually-blocking review, later in the list.
+          {
+            review: {
+              id: 'rev-general',
+              kind: 'review',
+              createdAt: batchTime,
+              verdict: 'request_changes',
+              agentId: 'agent-general',
+            },
+            findings: [
+              { file: 'src/middleware/ratelimit.ts', startLine: 12, dismissedAt: null, severity: 'SUGGESTION' },
+              { file: 'src/middleware/ratelimit.ts', startLine: 18, dismissedAt: null, severity: 'WARNING' },
+            ],
+          },
+          {
+            review: {
+              id: 'rev-security',
+              kind: 'review',
+              createdAt: batchTime,
+              verdict: 'approve',
+              agentId: 'agent-security',
+            },
+            findings: [],
+          },
+        ],
+      }),
+    );
+    const result = await service.getSmartDiff('ws-1', 'pr-1');
+    const file = result.groups[0]!.files[0]!;
+    expect(file.finding_lines).toEqual([
+      { line: 12, severity: 'SUGGESTION' },
+      { line: 18, severity: 'WARNING' },
+    ]);
   });
 
   // ---- total_lines and too_big --------------------------------------------

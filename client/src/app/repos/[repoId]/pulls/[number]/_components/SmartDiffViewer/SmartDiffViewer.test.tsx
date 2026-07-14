@@ -49,9 +49,15 @@ const SMART_DIFF_STUB: SmartDiff = {
           pseudocode_summary: null,
           additions: 10,
           deletions: 2,
-          // 5 distinct start_lines -> badge reads "5 findings"; [0] (=5) is the
-          // scroll target and matches the added line in SERVICE_PATCH below.
-          finding_lines: [5, 8, 12, 20, 33],
+          // 5 distinct start_lines -> badge reads "5 findings"; [0] (line 5) is
+          // the scroll target and matches the added line in SERVICE_PATCH below.
+          finding_lines: [
+            { line: 5, severity: "CRITICAL" },
+            { line: 8, severity: "WARNING" },
+            { line: 12, severity: "WARNING" },
+            { line: 20, severity: "SUGGESTION" },
+            { line: 33, severity: "SUGGESTION" },
+          ],
         },
       ],
     },
@@ -265,6 +271,21 @@ describe("SmartDiffViewer", () => {
       // (only one badge in the whole viewer)
       const badges = screen.getAllByText(/findings/);
       expect(badges).toHaveLength(1);
+    });
+
+    it("renders a per-line severity label next to a finding line, matching that finding's own severity", () => {
+      renderViewer();
+      // Line 5 (the added line in SERVICE_PATCH) is seeded with severity
+      // CRITICAL, which maps to the "blocker" wording (severityLabel.CRITICAL).
+      expect(screen.getByText("finding line")).toBeInTheDocument();
+      expect(screen.getByText("blocker")).toBeInTheDocument();
+    });
+
+    it("colors the file-level findings badge by the worst severity present, not a flat warning tint", () => {
+      renderViewer();
+      const badge = screen.getByRole("button", { name: "5 findings" });
+      // Worst severity among [CRITICAL, WARNING, WARNING, SUGGESTION, SUGGESTION] is CRITICAL.
+      expect(badge.style.color).toBe("var(--crit)");
     });
 
     it("badge carries accessible label with the findings count", () => {

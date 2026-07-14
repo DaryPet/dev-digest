@@ -1,8 +1,9 @@
 import { z } from 'zod';
+import { Severity } from './findings.js';
 
 /**
  * PR Brief building blocks: Intent, Blast radius, Risks, PR History,
- * Smart Diff. Composed into PrBrief.
+ * Smart Diff. Composed into Brief (SPEC-02 PR Why + Risk Brief).
  */
 
 // ---- Intent ----
@@ -81,12 +82,20 @@ export type PrHistory = z.infer<typeof PrHistory>;
 export const SmartDiffRole = z.enum(['core', 'wiring', 'boilerplate']);
 export type SmartDiffRole = z.infer<typeof SmartDiffRole>;
 
+/** A finding-flagged line, carrying its severity so the diff viewer can
+ *  color-code the line (border + inline label) instead of a flat highlight. */
+export const SmartDiffFindingLine = z.object({
+  line: z.number().int(),
+  severity: Severity,
+});
+export type SmartDiffFindingLine = z.infer<typeof SmartDiffFindingLine>;
+
 export const SmartDiffFile = z.object({
   path: z.string(),
   pseudocode_summary: z.string().nullish(),
   additions: z.number().int(),
   deletions: z.number().int(),
-  finding_lines: z.array(z.number().int()),
+  finding_lines: z.array(SmartDiffFindingLine),
 });
 export type SmartDiffFile = z.infer<typeof SmartDiffFile>;
 
@@ -112,11 +121,29 @@ export const SmartDiff = z.object({
 });
 export type SmartDiff = z.infer<typeof SmartDiff>;
 
-// ---- Composed PR Brief (pr_brief.json) ----
-export const PrBrief = z.object({
-  intent: Intent,
-  blast: BlastRadius,
-  risks: Risks,
-  history: PrHistory,
+// ---- PR Why + Risk Brief (SPEC-02; pr_brief.json) ----
+export const BriefRisk = z.object({
+  title: z.string(),
+  explanation: z.string(),
+  /** File paths / endpoint / cron strings this risk cites, each prefixed with its
+   *  kind so grounding doesn't have to guess: "FILE:<path>", "ENDPOINT:<method>
+   *  <path>", or "CRON:<expr>" (cross-model review finding, 2026-07-13). */
+  file_refs: z.array(z.string()),
 });
-export type PrBrief = z.infer<typeof PrBrief>;
+export type BriefRisk = z.infer<typeof BriefRisk>;
+
+export const BriefReviewFocusItem = z.object({
+  file: z.string(),
+  line: z.number().int(),
+  reason: z.string(),
+});
+export type BriefReviewFocusItem = z.infer<typeof BriefReviewFocusItem>;
+
+export const Brief = z.object({
+  what: z.string(),
+  why: z.string(),
+  risk_level: RiskSeverity,
+  risks: z.array(BriefRisk),
+  review_focus: z.array(BriefReviewFocusItem),
+});
+export type Brief = z.infer<typeof Brief>;

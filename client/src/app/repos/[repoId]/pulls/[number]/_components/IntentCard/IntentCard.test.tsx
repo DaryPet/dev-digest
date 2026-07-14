@@ -16,10 +16,19 @@ vi.mock("@/lib/hooks/intent", () => ({
   useComputeIntent: vi.fn(),
 }));
 
+// IntentCard also reads the Brief's risks[] (SPEC-02) via the hook shared
+// with PrBriefCard/ReviewFocusSection — mock it too, per the composite-test
+// rule (client/INSIGHTS.md 2026-07-06).
+vi.mock("@/lib/hooks/brief", () => ({
+  useBrief: vi.fn(),
+}));
+
 import { useIntent, useComputeIntent } from "@/lib/hooks/intent";
+import { useBrief } from "@/lib/hooks/brief";
 
 const mockUseIntent = vi.mocked(useIntent);
 const mockUseComputeIntent = vi.mocked(useComputeIntent);
+const mockUseBrief = vi.mocked(useBrief);
 
 // Helpers to build partial mock return values without satisfying the full
 // TanStack Query return types (double-cast through unknown).
@@ -29,22 +38,29 @@ function intentResult(data: Parameters<typeof useIntent>[0] extends infer _ ? un
 function computeResult(isPending: boolean) {
   return { mutate, isPending } as unknown as ReturnType<typeof useComputeIntent>;
 }
+function briefResult(risks: unknown[] = []) {
+  return { data: { brief: { risks } } } as unknown as ReturnType<typeof useBrief>;
+}
 
 interface RenderOptions {
   computePending?: boolean;
+  risks?: unknown[];
+  repoFullName?: string | null;
+  headSha?: string | null;
 }
 
 function renderCard(
   prId: string | number = "pr-1",
-  { computePending = false }: RenderOptions = {},
+  { computePending = false, risks = [], repoFullName = null, headSha = null }: RenderOptions = {},
 ) {
   mockUseComputeIntent.mockReturnValue(computeResult(computePending));
+  mockUseBrief.mockReturnValue(briefResult(risks));
 
   const qc = new QueryClient();
   return render(
     <QueryClientProvider client={qc}>
       <NextIntlClientProvider locale="en" messages={{ brief: messages }}>
-        <IntentCard prId={prId} />
+        <IntentCard prId={prId} repoFullName={repoFullName} headSha={headSha} />
       </NextIntlClientProvider>
     </QueryClientProvider>,
   );
@@ -143,5 +159,124 @@ describe("IntentCard", () => {
     // Both in_scope and out_of_scope are empty — renders "—" placeholders
     const dashes = screen.getAllByText("—");
     expect(dashes.length).toBe(2);
+  });
+
+  it("shows an honest empty state when the Brief has no risks", () => {
+    mockUseIntent.mockReturnValue(
+      intentResult({ intent: { intent: "Minor fix.", in_scope: [], out_of_scope: [] } }, false),
+    );
+
+    renderCard("pr-1", { risks: [] });
+    expect(screen.getByText("No notable risks flagged.")).toBeInTheDocument();
+  });
+
+  it("renders the Brief's grounded risks[] with title and file refs", () => {
+    mockUseIntent.mockReturnValue(
+      intentResult({ intent: { intent: "Minor fix.", in_scope: [], out_of_scope: [] } }, false),
+    );
+
+    renderCard("pr-1", {
+      risks: [
+        {
+          title: "Auth surface touched",
+          explanation: "The rate limiter wraps the login route.",
+          file_refs: ["FILE:src/middleware/ratelimit.ts:12-18"],
+        },
+      ],
+    });
+
+    expect(screen.getByText("Auth surface touched")).toBeInTheDocument();
+    // Displayed text strips the server's "FILE:" kind prefix.
+    expect(screen.getByText("src/middleware/ratelimit.ts:12-18")).toBeInTheDocument();
+    expect(
+      screen.queryByText("The rate limiter wraps the login route."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders a clickable GitHub deep link for a real file ref when repo info is available", () => {
+    mockUseIntent.mockReturnValue(
+      intentResult({ intent: { intent: "Minor fix.", in_scope: [], out_of_scope: [] } }, false),
+    );
+
+    renderCard("pr-1", {
+      repoFullName: "acme/widgets",
+      headSha: "abc123",
+      risks: [
+        {
+          title: "Auth surface touched",
+          explanation: "x",
+          file_refs: ["FILE:src/middleware/ratelimit.ts:12-18"],
+        },
+      ],
+    });
+
+    const link = screen.getByText("src/middleware/ratelimit.ts:12-18");
+    expect(link.tagName).toBe("A");
+    expect(link).toHaveAttribute(
+      "href",
+      "https://github.com/acme/widgets/blob/abc123/src/middleware/ratelimit.ts#L12-L18",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("renders an ENDPOINT:-prefixed ref as plain text (prefix stripped), never as a broken link", () => {
+    mockUseIntent.mockReturnValue(
+      intentResult({ intent: { intent: "Minor fix.", in_scope: [], out_of_scope: [] } }, false),
+    );
+
+    renderCard("pr-1", {
+      repoFullName: "acme/widgets",
+      headSha: "abc123",
+      risks: [
+        {
+          title: "New public endpoint",
+          explanation: "x",
+          file_refs: ["ENDPOINT:POST /api/public/webhooks"],
+        },
+      ],
+    });
+
+    const ref = screen.getByText("POST /api/public/webhooks");
+    expect(ref.tagName).not.toBe("A");
+  });
+
+  it("treats an unprefixed (legacy) file ref as non-linkable rather than guessing", () => {
+    mockUseIntent.mockReturnValue(
+      intentResult({ intent: { intent: "Minor fix.", in_scope: [], out_of_scope: [] } }, false),
+    );
+
+    renderCard("pr-1", {
+      repoFullName: "acme/widgets",
+      headSha: "abc123",
+      risks: [
+        {
+          title: "Old cached risk",
+          explanation: "x",
+          file_refs: ["src/legacy.ts:5"],
+        },
+      ],
+    });
+
+    const ref = screen.getByText("src/legacy.ts:5");
+    expect(ref.tagName).not.toBe("A");
+  });
+
+  it("expands a risk item to show its explanation on click", () => {
+    mockUseIntent.mockReturnValue(
+      intentResult({ intent: { intent: "Minor fix.", in_scope: [], out_of_scope: [] } }, false),
+    );
+
+    renderCard("pr-1", {
+      risks: [
+        {
+          title: "New dependency: ioredis",
+          explanation: "Adds a Redis client dependency.",
+          file_refs: ["FILE:package.json:34"],
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /New dependency: ioredis/ }));
+    expect(screen.getByText("Adds a Redis client dependency.")).toBeInTheDocument();
   });
 });

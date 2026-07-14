@@ -25,4 +25,16 @@ export const s = {
     fontSize: 13,
     color: "var(--text-muted)",
   } satisfies CSSProperties,
+
+  /** Wraps the populated VerdictBanner + the Recompute row underneath it. */
+  wrap: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 10,
+  } satisfies CSSProperties,
+
+  recomputeRow: {
+    display: "flex",
+    justifyContent: "flex-end",
+  } satisfies CSSProperties,
 } as const;
