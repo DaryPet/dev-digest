@@ -28,6 +28,7 @@ import {
   MAX_BLAST_SYMBOLS_IN_PROMPT,
   MAX_CALLERS_PER_SYMBOL_IN_PROMPT,
   MAX_SMARTDIFF_FILES_PER_GROUP_IN_PROMPT,
+  MAX_PROMPT_INPUT_TOKENS,
   BRIEF_SYSTEM_PROMPT,
 } from './constants.js';
 
@@ -99,20 +100,31 @@ export class BriefService {
     const reviewRows = await this.repo.reviewsForPull(prId);
     const winner = selectMostBlockingReview(reviewRows);
 
+    // Project Context is optional/degrade-gracefully like the linked issue
+    // above — a failure here (bad agent row, project-context read error)
+    // must not 500 the whole Brief request (cross-model review finding,
+    // 2026-07-13).
     let specs: string[] = [];
     if (winner?.review.agentId) {
-      const agent = await this.container.agentsRepo.getById(workspaceId, winner.review.agentId);
-      if (agent) {
-        const linkedSkills = await this.container.agentsRepo.linkedSkills(agent.id);
-        const skillPathLists = linkedSkills
-          .filter((l) => l.skill.enabled)
-          .map((l) => l.skill.projectContextPaths ?? []);
-        const effectivePaths = computeEffectiveAttachedPaths(
-          agent.projectContextPaths ?? [],
-          skillPathLists,
+      try {
+        const agent = await this.container.agentsRepo.getById(workspaceId, winner.review.agentId);
+        if (agent) {
+          const linkedSkills = await this.container.agentsRepo.linkedSkills(agent.id);
+          const skillPathLists = linkedSkills
+            .filter((l) => l.skill.enabled)
+            .map((l) => l.skill.projectContextPaths ?? []);
+          const effectivePaths = computeEffectiveAttachedPaths(
+            agent.projectContextPaths ?? [],
+            skillPathLists,
+          );
+          const resolved = await this.projectContextService.resolveForRun(repoRef, effectivePaths);
+          specs = resolved.specs;
+        }
+      } catch (err) {
+        console.error(
+          `[brief] failed to resolve Project Context for pr ${prId} (agent ${winner.review.agentId}) — proceeding without attached specs:`,
+          err,
         );
-        const resolved = await this.projectContextService.resolveForRun(repoRef, effectivePaths);
-        specs = resolved.specs;
       }
     }
 
@@ -126,8 +138,15 @@ export class BriefService {
       specs,
     });
 
-    // Step 5: one structured LLM call.
+    // Step 5: one structured LLM call. Input size is logged before (a rough
+    // char-based estimate — the real token count isn't known until the
+    // provider's response comes back) and after (the provider's own usage
+    // accounting) the call, so "is the input ≤8K" is answerable from the logs
+    // rather than only from the count-based MAX_*_IN_PROMPT caps above.
     const { provider, model } = await resolveFeatureModel(this.container, workspaceId, BRIEF_FEATURE_SLOT);
+    console.log(
+      `[brief] pr ${prId}: sending LLM input, ${userContent.length} chars (~${Math.ceil(userContent.length / 4)} tokens estimate, budget ${MAX_PROMPT_INPUT_TOKENS})`,
+    );
     const llm = await this.container.llm(provider);
     const result = await llm.completeStructured({
       model,
@@ -139,6 +158,12 @@ export class BriefService {
         { role: 'user', content: userContent },
       ],
     });
+    console.log(`[brief] pr ${prId}: LLM call done, tokensIn=${result.tokensIn} tokensOut=${result.tokensOut}`);
+    if (result.tokensIn > MAX_PROMPT_INPUT_TOKENS) {
+      console.warn(
+        `[brief] pr ${prId}: input tokens (${result.tokensIn}) exceeded the ${MAX_PROMPT_INPUT_TOKENS}-token budget — consider tightening the MAX_*_IN_PROMPT caps in constants.ts`,
+      );
+    }
 
     // Step 6: deterministic grounding pass.
     const groundingSet = buildGroundingSet(smartDiff, blastResponse.blast);
@@ -195,7 +220,7 @@ function buildBriefPrompt(input: {
         .slice(0, MAX_SMARTDIFF_FILES_PER_GROUP_IN_PROMPT)
         .map(
           (f) =>
-            `- ${f.path} (+${f.additions}/-${f.deletions}), finding_lines=[${f.finding_lines.join(', ')}]`,
+            `- ${f.path} (+${f.additions}/-${f.deletions}), finding_lines=[${f.finding_lines.map((fl) => `${fl.line}:${fl.severity}`).join(', ')}]`,
         )
         .join('\n');
       return `### ${group.role}\n${files}`;

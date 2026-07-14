@@ -16,6 +16,15 @@ export const MAX_CALLERS_PER_SYMBOL_IN_PROMPT = 5;
 export const MAX_SMARTDIFF_FILES_PER_GROUP_IN_PROMPT = 25;
 
 /**
+ * TЗ acceptance check: "відкрийте логи виклику — розмір входу ≤8K" — every
+ * Brief LLM call logs its actual input token count (from the provider's own
+ * usage accounting) and warns when it crosses this budget, so the check is
+ * something a developer can literally do by reading the logs instead of
+ * trusting the MAX_*_IN_PROMPT count-caps above to be enough on their own.
+ */
+export const MAX_PROMPT_INPUT_TOKENS = 8_000;
+
+/**
  * System prompt for the Brief synthesizer.
  *
  * Instructs the model to produce a Brief object:
@@ -50,6 +59,10 @@ Derive:
   file_refs — an array of ONLY the exact file paths, "METHOD /path" endpoint strings, or
   cron strings that were GIVEN to you above (in the blast radius or smart diff sections).
   NEVER invent a file path, endpoint, or cron string that wasn't provided.
+  Prefix EVERY file_refs entry with its kind, so it's unambiguous which known-set it
+  belongs to: "FILE:<path>" for a file path, "ENDPOINT:<method> <path>" for an endpoint
+  string, "CRON:<expr>" for a cron string. Example: "FILE:src/api/users.ts",
+  "ENDPOINT:POST /api/users".
 - review_focus: 0-8 items, each a { file, line, reason } pointing the reviewer at a specific
   line. The (file, line) pair MUST be one of the caller locations from the blast radius or one
   of the finding_lines from the smart diff — NEVER invent a file or line number.

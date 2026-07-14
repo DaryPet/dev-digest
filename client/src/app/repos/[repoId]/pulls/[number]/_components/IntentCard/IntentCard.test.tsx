@@ -45,11 +45,13 @@ function briefResult(risks: unknown[] = []) {
 interface RenderOptions {
   computePending?: boolean;
   risks?: unknown[];
+  repoFullName?: string | null;
+  headSha?: string | null;
 }
 
 function renderCard(
   prId: string | number = "pr-1",
-  { computePending = false, risks = [] }: RenderOptions = {},
+  { computePending = false, risks = [], repoFullName = null, headSha = null }: RenderOptions = {},
 ) {
   mockUseComputeIntent.mockReturnValue(computeResult(computePending));
   mockUseBrief.mockReturnValue(briefResult(risks));
@@ -58,7 +60,7 @@ function renderCard(
   return render(
     <QueryClientProvider client={qc}>
       <NextIntlClientProvider locale="en" messages={{ brief: messages }}>
-        <IntentCard prId={prId} />
+        <IntentCard prId={prId} repoFullName={repoFullName} headSha={headSha} />
       </NextIntlClientProvider>
     </QueryClientProvider>,
   );
@@ -178,16 +180,85 @@ describe("IntentCard", () => {
         {
           title: "Auth surface touched",
           explanation: "The rate limiter wraps the login route.",
-          file_refs: ["src/middleware/ratelimit.ts:12-18"],
+          file_refs: ["FILE:src/middleware/ratelimit.ts:12-18"],
         },
       ],
     });
 
     expect(screen.getByText("Auth surface touched")).toBeInTheDocument();
+    // Displayed text strips the server's "FILE:" kind prefix.
     expect(screen.getByText("src/middleware/ratelimit.ts:12-18")).toBeInTheDocument();
     expect(
       screen.queryByText("The rate limiter wraps the login route."),
     ).not.toBeInTheDocument();
+  });
+
+  it("renders a clickable GitHub deep link for a real file ref when repo info is available", () => {
+    mockUseIntent.mockReturnValue(
+      intentResult({ intent: { intent: "Minor fix.", in_scope: [], out_of_scope: [] } }, false),
+    );
+
+    renderCard("pr-1", {
+      repoFullName: "acme/widgets",
+      headSha: "abc123",
+      risks: [
+        {
+          title: "Auth surface touched",
+          explanation: "x",
+          file_refs: ["FILE:src/middleware/ratelimit.ts:12-18"],
+        },
+      ],
+    });
+
+    const link = screen.getByText("src/middleware/ratelimit.ts:12-18");
+    expect(link.tagName).toBe("A");
+    expect(link).toHaveAttribute(
+      "href",
+      "https://github.com/acme/widgets/blob/abc123/src/middleware/ratelimit.ts#L12-L18",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("renders an ENDPOINT:-prefixed ref as plain text (prefix stripped), never as a broken link", () => {
+    mockUseIntent.mockReturnValue(
+      intentResult({ intent: { intent: "Minor fix.", in_scope: [], out_of_scope: [] } }, false),
+    );
+
+    renderCard("pr-1", {
+      repoFullName: "acme/widgets",
+      headSha: "abc123",
+      risks: [
+        {
+          title: "New public endpoint",
+          explanation: "x",
+          file_refs: ["ENDPOINT:POST /api/public/webhooks"],
+        },
+      ],
+    });
+
+    const ref = screen.getByText("POST /api/public/webhooks");
+    expect(ref.tagName).not.toBe("A");
+  });
+
+  it("treats an unprefixed (legacy) file ref as non-linkable rather than guessing", () => {
+    mockUseIntent.mockReturnValue(
+      intentResult({ intent: { intent: "Minor fix.", in_scope: [], out_of_scope: [] } }, false),
+    );
+
+    renderCard("pr-1", {
+      repoFullName: "acme/widgets",
+      headSha: "abc123",
+      risks: [
+        {
+          title: "Old cached risk",
+          explanation: "x",
+          file_refs: ["src/legacy.ts:5"],
+        },
+      ],
+    });
+
+    const ref = screen.getByText("src/legacy.ts:5");
+    expect(ref.tagName).not.toBe("A");
   });
 
   it("expands a risk item to show its explanation on click", () => {
@@ -200,7 +271,7 @@ describe("IntentCard", () => {
         {
           title: "New dependency: ioredis",
           explanation: "Adds a Redis client dependency.",
-          file_refs: ["package.json:34"],
+          file_refs: ["FILE:package.json:34"],
         },
       ],
     });

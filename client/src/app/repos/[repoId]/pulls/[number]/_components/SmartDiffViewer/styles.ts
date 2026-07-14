@@ -219,12 +219,30 @@ export const s = {
     padding: "8px 0",
   } satisfies CSSProperties,
 
-  /** One rendered diff line (add / del / ctx). */
+  /** One rendered diff line (add / del / ctx). borderLeft defaults to
+   *  transparent so a finding line's severity color doesn't shift layout. */
   diffLine: {
     display: "flex",
     alignItems: "stretch",
     fontSize: 13,
     lineHeight: "20px",
+    borderLeft: "3px solid transparent",
+  } satisfies CSSProperties,
+
+  /** Inline severity label at the right end of a finding line — color/icon
+   *  sourced from SEV (never hand-rolled), matching the exact color that
+   *  arrived with the finding (blocker=red, warning=yellow, suggestion=blue). */
+  findingInlineLabel: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    marginLeft: "auto",
+    paddingRight: 12,
+    paddingLeft: 12,
+    fontSize: 12,
+    fontWeight: 600,
+    flexShrink: 0,
+    whiteSpace: "nowrap" as const,
   } satisfies CSSProperties,
 
   lineNo: {

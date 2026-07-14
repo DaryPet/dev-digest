@@ -18,6 +18,11 @@
   "fileCount": "{count, plural, one {# file} other {# files}}",
   "emptyGroup": "No files in this category",
   "findings": "{count} findings",
+  "severityLabel": {
+    "CRITICAL": "blocker",
+    "WARNING": "warning",
+    "SUGGESTION": "suggestion"
+  },
   "noDiff": "No diff available",
   "splitSuggestion": "This PR is too large to review in one pass",
   "totalLines": "{total} lines changed",

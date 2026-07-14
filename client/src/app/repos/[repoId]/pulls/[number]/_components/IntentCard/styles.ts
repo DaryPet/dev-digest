@@ -136,29 +136,29 @@ export const s = {
     color: "inherit",
   } satisfies CSSProperties,
 
-  riskItemText: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: 3,
-    minWidth: 0,
-    flex: 1,
-  } satisfies CSSProperties,
-
   riskItemTitle: {
+    flex: 1,
+    minWidth: 0,
     fontSize: 14,
     fontWeight: 600,
     color: "var(--text-primary)",
   } satisfies CSSProperties,
 
-  riskItemRefs: {
-    fontSize: 12.5,
-    color: "var(--accent-text)",
-    overflowWrap: "anywhere" as const,
-  } satisfies CSSProperties,
-
   riskChevron: {
     flexShrink: 0,
     color: "var(--text-muted)",
+  } satisfies CSSProperties,
+
+  riskItemRefs: {
+    padding: "0 12px 10px 36px",
+    fontSize: 12.5,
+    lineHeight: 1.5,
+    overflowWrap: "anywhere" as const,
+  } satisfies CSSProperties,
+
+  refLink: {
+    color: "var(--accent-text)",
+    textDecoration: "none",
   } satisfies CSSProperties,
 
   riskExplanation: {

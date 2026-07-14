@@ -162,6 +162,42 @@ describe('BriefService.getBrief', () => {
     expect(store.value).toEqual(original);
   });
 
+  it('degrades gracefully (omits specs, still returns a Brief) when Project Context resolution throws', async () => {
+    const store: { value: Brief | undefined } = { value: undefined };
+    const reviews: ReviewWithFindings[] = [
+      {
+        review: {
+          id: 'rev-1',
+          agentId: 'agent-1',
+          verdict: 'comment',
+          kind: 'review',
+          createdAt: new Date(),
+        } as never,
+        findings: [],
+      },
+    ];
+    const repo = makeReviewRepo({ pull: PULL, repo: REPO_ROW, briefStore: store, reviews });
+    const container = {
+      db: makeDb(),
+      llm: async () => new MockLLMProvider('openai', { structured: RAW_BRIEF }),
+      github: async () => {
+        throw new Error('offline');
+      },
+      agentsRepo: {
+        // Simulates a broken/unreachable agents repo — must not 500 the request.
+        getById: async () => {
+          throw new Error('agents repo unavailable');
+        },
+        linkedSkills: async () => [],
+      },
+    } as unknown as Container;
+    const service = makeService(container, repo);
+
+    const result = await service.getBrief('ws-1', 'pr-1', {});
+    expect(result.brief.what).toBe(RAW_BRIEF.what);
+    expect(store.value).toEqual(result.brief);
+  });
+
   it('resolves the risk_brief feature slot to openrouter/deepseek-v4-flash by default', () => {
     const def = FEATURE_MODELS.find((f) => f.id === 'risk_brief');
     expect(def?.defaultProvider).toBe('openrouter');

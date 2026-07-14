@@ -6,10 +6,35 @@ import { Button, Icon, Skeleton, SEV, CAT } from "@devdigest/ui";
 import type { BriefRisk } from "@devdigest/shared";
 import { useIntent, useComputeIntent } from "@/lib/hooks/intent";
 import { useBrief } from "@/lib/hooks/brief";
+import { githubBlobUrl } from "@/lib/github-urls";
 import { s } from "./styles";
 
 interface IntentCardProps {
   prId: string | number;
+  repoFullName: string | null;
+  headSha: string | null;
+}
+
+/** Strip the server's kind prefix ("FILE:"/"ENDPOINT:"/"CRON:") for display —
+ *  falls back to the raw ref for older cached data that predates the prefix
+ *  convention (cross-model review finding, 2026-07-13). */
+function displayRef(ref: string): string {
+  return ref.replace(/^(FILE|ENDPOINT|CRON):/, "");
+}
+
+/** Only a "FILE:"-prefixed ref is linkable (ENDPOINT:/CRON: are not files).
+ *  The prefix makes this deterministic instead of guessing from the ref's
+ *  shape — same fix as `brief/grounding.ts`'s `refMatchesKnownSet`. Falls
+ *  back to null (never linked) for an unprefixed ref, since we can no longer
+ *  tell whether it's a file without guessing. */
+function parseFileRef(ref: string): { file: string; startLine?: number; endLine?: number } | null {
+  if (!ref.startsWith("FILE:")) return null;
+  const value = ref.slice(5);
+  const withLine = value.match(/^([^\s:]+):(\d+)(?:-(\d+))?$/);
+  if (withLine) {
+    return { file: withLine[1], startLine: Number(withLine[2]), endLine: withLine[3] ? Number(withLine[3]) : undefined };
+  }
+  return { file: value };
 }
 
 interface ScopeListProps {
@@ -66,7 +91,17 @@ function riskVisual(risk: BriefRisk): { icon: typeof Icon.AlertTriangle; color: 
  *  Each item cites at least one real file/endpoint (`file_refs`); expandable
  *  to show the model's `explanation`. LLM-derived text rendered as plain
  *  text only — never dangerouslySetInnerHTML. */
-function RiskAreasList({ risks, emptyLabel }: { risks: BriefRisk[]; emptyLabel: string }) {
+function RiskAreasList({
+  risks,
+  emptyLabel,
+  repoFullName,
+  headSha,
+}: {
+  risks: BriefRisk[];
+  emptyLabel: string;
+  repoFullName: string | null;
+  headSha: string | null;
+}) {
   const [openIndex, setOpenIndex] = React.useState<number | null>(null);
 
   if (risks.length === 0) return <span style={s.emptyHint}>{emptyLabel}</span>;
@@ -85,14 +120,7 @@ function RiskAreasList({ risks, emptyLabel }: { risks: BriefRisk[]; emptyLabel: 
               onClick={() => setOpenIndex(isOpen ? null : i)}
             >
               <RiskIcon size={14} style={{ color: riskColor }} aria-hidden />
-              <span style={s.riskItemText}>
-                <span style={s.riskItemTitle}>{risk.title}</span>
-                {risk.file_refs.length > 0 && (
-                  <span className="mono" style={s.riskItemRefs}>
-                    {risk.file_refs.join(", ")}
-                  </span>
-                )}
-              </span>
+              <span style={s.riskItemTitle}>{risk.title}</span>
               <Icon.ChevronDown
                 size={14}
                 style={{
@@ -102,6 +130,40 @@ function RiskAreasList({ risks, emptyLabel }: { risks: BriefRisk[]; emptyLabel: 
                 aria-hidden
               />
             </button>
+
+            {risk.file_refs.length > 0 && (
+              <div style={s.riskItemRefs}>
+                {risk.file_refs.map((ref, j) => {
+                  const parsed = parseFileRef(ref);
+                  const href =
+                    parsed && repoFullName && headSha
+                      ? githubBlobUrl(repoFullName, headSha, parsed.file, parsed.startLine, parsed.endLine)
+                      : null;
+                  const label = displayRef(ref);
+                  return (
+                    <React.Fragment key={j}>
+                      {j > 0 && <span aria-hidden>, </span>}
+                      {href ? (
+                        <a
+                          className="mono"
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={s.refLink}
+                        >
+                          {label}
+                        </a>
+                      ) : (
+                        <span className="mono" style={s.refLink}>
+                          {label}
+                        </span>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            )}
+
             {isOpen && <p style={s.riskExplanation}>{risk.explanation}</p>}
           </div>
         );
@@ -115,7 +177,7 @@ function RiskAreasList({ risks, emptyLabel }: { risks: BriefRisk[]; emptyLabel: 
  *  In-scope / Out-of-scope columns, the Brief's grounded Risk areas, and a
  *  Recompute button. LLM-derived text is rendered as plain text only — never
  *  dangerouslySetInnerHTML. */
-export function IntentCard({ prId }: IntentCardProps) {
+export function IntentCard({ prId, repoFullName, headSha }: IntentCardProps) {
   const t = useTranslations("brief");
   const { data, isLoading } = useIntent(prId);
   const compute = useComputeIntent(prId);
@@ -185,7 +247,12 @@ export function IntentCard({ prId }: IntentCardProps) {
               <Icon.AlertTriangle size={14} style={{ color: "var(--text-muted)" }} aria-hidden />
               {t("riskAreas")}
             </div>
-            <RiskAreasList risks={risks} emptyLabel={t("noRisks")} />
+            <RiskAreasList
+              risks={risks}
+              emptyLabel={t("noRisks")}
+              repoFullName={repoFullName}
+              headSha={headSha}
+            />
           </div>
         </>
       )}

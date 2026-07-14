@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { Severity } from './findings.js';
 
 /**
  * PR Brief building blocks: Intent, Blast radius, Risks, PR History,
@@ -81,12 +82,20 @@ export type PrHistory = z.infer<typeof PrHistory>;
 export const SmartDiffRole = z.enum(['core', 'wiring', 'boilerplate']);
 export type SmartDiffRole = z.infer<typeof SmartDiffRole>;
 
+/** A finding-flagged line, carrying its severity so the diff viewer can
+ *  color-code the line (border + inline label) instead of a flat highlight. */
+export const SmartDiffFindingLine = z.object({
+  line: z.number().int(),
+  severity: Severity,
+});
+export type SmartDiffFindingLine = z.infer<typeof SmartDiffFindingLine>;
+
 export const SmartDiffFile = z.object({
   path: z.string(),
   pseudocode_summary: z.string().nullish(),
   additions: z.number().int(),
   deletions: z.number().int(),
-  finding_lines: z.array(z.number().int()),
+  finding_lines: z.array(SmartDiffFindingLine),
 });
 export type SmartDiffFile = z.infer<typeof SmartDiffFile>;
 
@@ -116,7 +125,9 @@ export type SmartDiff = z.infer<typeof SmartDiff>;
 export const BriefRisk = z.object({
   title: z.string(),
   explanation: z.string(),
-  /** File paths / "METHOD /path" endpoint strings / cron strings this risk cites. */
+  /** File paths / endpoint / cron strings this risk cites, each prefixed with its
+   *  kind so grounding doesn't have to guess: "FILE:<path>", "ENDPOINT:<method>
+   *  <path>", or "CRON:<expr>" (cross-model review finding, 2026-07-13). */
   file_refs: z.array(z.string()),
 });
 export type BriefRisk = z.infer<typeof BriefRisk>;

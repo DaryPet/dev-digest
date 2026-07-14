@@ -28,7 +28,7 @@ export function OverviewTab({ prId, repoFullName, headSha }: OverviewTabProps) {
       </section>
 
       <div style={s.briefGrid}>
-        <IntentCard prId={prId} />
+        <IntentCard prId={prId} repoFullName={repoFullName} headSha={headSha} />
         <BlastRadiusCard prId={prId} repoFullName={repoFullName} headSha={headSha} />
       </div>
 

@@ -51,7 +51,11 @@ Reused read-only (not modified): `blast/service.ts` (`BlastService`), `smart-dif
 export const BriefRisk = z.object({
   title: z.string(),
   explanation: z.string(),
-  /** File paths / "METHOD /path" endpoint strings / cron strings this risk cites. */
+  /** File paths / endpoint / cron strings this risk cites, each prefixed with its
+   *  kind so grounding doesn't have to guess: "FILE:<path>", "ENDPOINT:<method>
+   *  <path>", or "CRON:<expr>". [AMENDED post-implementation, 2026-07-13 — see
+   *  §15 cross-model review: original text had no kind prefix, string-shape
+   *  guessing was ambiguous.] */
   file_refs: z.array(z.string()),
 });
 export type BriefRisk = z.infer<typeof BriefRisk>;
@@ -106,7 +110,7 @@ Steps:
    - `smartDiff = (overrides.smartDiffService ?? new SmartDiffService(container)).getSmartDiff(...)`.
    - Linked issue: same try/catch-as-absent pattern as `intent/service.ts` (`container.github()` → `getPullRequest` → `.linked_issue`; offline/error → omitted, AC never blocks).
    - `reviewRows = reviewRepo.reviewsForPull(prId)` (newest-first) → `winner = selectMostBlockingReview(reviewRows)` (new pure helper, ported 1:1 from `PrBriefCard.tsx`'s algorithm, operating on `{review: ReviewRow; findings: FindingRow[]}[]` instead of `ReviewRecord[]` — **this is a deliberate duplication**, flagged in §13).
-   - Project Context (AC-2/AC-3): if `winner?.review.agentId` present → `agent = agentsRepo.getById(...)`, `linkedSkills = agentsRepo.linkedSkills(agent.id)`, `effectivePaths = computeEffectiveAttachedPaths(agent.projectContextPaths ?? [], skillPathLists)`, `(overrides.projectContextService ?? new ProjectContextService(container)).resolveForRun(repoRef, effectivePaths)` → `specs[]`. Else `specs = []` (AC-3).
+   - Project Context (AC-2/AC-3): if `winner?.review.agentId` present → `agent = agentsRepo.getById(...)`, `linkedSkills = agentsRepo.linkedSkills(agent.id)`, `effectivePaths = computeEffectiveAttachedPaths(agent.projectContextPaths ?? [], skillPathLists)`, `(overrides.projectContextService ?? new ProjectContextService(container)).resolveForRun(repoRef, effectivePaths)` → `specs[]`. Else `specs = []` (AC-3). **[AMENDED post-implementation, 2026-07-13]** This whole bullet is wrapped in `try/catch`, matching the linked-issue pattern above — a broken agent row or a `resolveForRun` failure logs and degrades to `specs = []` instead of throwing (the un-amended text below implied a bare `await` chain, which would have 500'd the request on failure, contradicting this same step's own "all optional/degrade-gracefully" framing).
 4. Compose the prompt (sections: title/body, intent block if present, linked-issue block if present [capped], blast summary + capped downstream list, smart-diff groups + capped file list per group, attached specs [already capped by `resolveForRun`'s `MAX_SPEC_CHARS`]) — every untrusted section (title/body, issue, spec content) is clearly labeled as DATA in the prompt; `BRIEF_SYSTEM_PROMPT` explicitly instructs the model never to treat it as instructions (same practical protection as `intent/service.ts`, see §2).
 5. One structured call: `resolveFeatureModel(container, workspaceId, 'risk_brief')` → `container.llm(provider).completeStructured({ model, schema: Brief, schemaName: 'Brief', temperature: 0, messages })`.
 6. `groundingSet = buildGroundingSet(smartDiff, blastResponse.blast)`; `grounded = groundBrief(raw.data, groundingSet)` (pure, deterministic — AC-5/6/7/8).
@@ -121,7 +125,11 @@ function buildGroundingSet(smartDiff: SmartDiff, blast: BlastRadius): {
   knownLinesByFile: Map<string, Set<number>>;     // blast callers' (file,line) ∪ smartDiff finding_lines' (path,line)
 };
 function groundBrief(raw: Brief, g: ReturnType<typeof buildGroundingSet>): Brief {
-  // risks: keep only items with ≥1 file_ref in knownFiles ∪ knownEndpointsOrCrons (AC-5/6)
+  // risks: keep only items with ≥1 file_ref matched via refMatchesKnownSet() (AC-5/6)
+  //   [AMENDED post-implementation, 2026-07-13] refMatchesKnownSet() checks a
+  //   "FILE:"-prefixed ref only against knownFiles, an "ENDPOINT:"/"CRON:"-prefixed
+  //   ref only against knownEndpointsOrCrons; an unprefixed ref (legacy cached
+  //   data) falls back to checking both sets, same as the original unamended text.
   // review_focus: keep only items where knownLinesByFile.get(file)?.has(line) (AC-7/8)
 }
 ```
@@ -253,7 +261,44 @@ flowchart TD
 - **Dual vendor mirrors** (`server/src/vendor/shared/contracts/brief.ts` and `platform.ts` vs their `client/` copies) must land byte-identical; the architecture-reviewer's post-implementation pass (already scheduled by the developer) should diff the two copies.
 - **`VerdictBanner`'s `verdict` prop going optional** is backward-compatible by construction (`ReviewRunAccordion` never passes `riskLevel`/`riskLabel`), but T2 must run `VerdictBanner.test.tsx` unmodified-behavior assertions to prove it.
 - **Large-PR prompt size** — cap constants in §6.6 are a first pass; if the model still overflows on a real large PR, tightening them is a config change, not a contract change.
-- **`risks[]` is computed but unrendered this iteration** (§2) — intentional per spec's Non-goals; developer-confirmed 2026-07-12; not a defect.
+- **`risks[]` is computed but unrendered this iteration** (§2) — **[STALE, see §15]** was true when planned (2026-07-12); superseded post-implementation on 2026-07-13, `risks[]` is now rendered in `IntentCard`'s "Risk areas" slot.
 
 ### 14. Open questions
 — none — (both items raised during planning — `risks[]` UI deferral, and the plan as a whole including the `risk_brief` default fix and the `PrBrief`→`Brief` replacement — were confirmed by the developer on 2026-07-12.)
+
+### 15. Cross-model review (2026-07-13 — out of order, see caveat below)
+Per the course TЗ, `plan.md` is supposed to go to a model of a different family (GPT/Gemini
+via OpenRouter, as an independent staff-engineer reviewer with no chat context) **before**
+`run-plan` dispatches the implementer. **That did not happen here** — T1/T2 implementation,
+the architecture-reviewer pass, and this plan's original §1–14 were all completed first; the
+cross-model review was run afterward, on 2026-07-13, against the git working tree at that
+point. The three actionable findings were retrofitted into already-written code rather than
+shaping the plan before code existed — full findings + verdict in
+`docs/reviews/cross-model-review-pr-why-risk-brief.md` (reviewer: `google/gemini-2.5-pro`
+via OpenRouter, one-off script `server/scripts/cross-model-review.ts`).
+
+Disposition of each finding (developer-approved 2026-07-14):
+- **[blocker as labeled by Gemini, downgraded to concern on review]** `getBrief` silently
+  returning `undefined` on a `Brief.safeParse` failure — fixed: now `console.error`s the
+  parse error before returning `undefined` (still never throws — cache-miss semantics
+  unchanged). Not actually ship-blocking (the system self-heals via recompute), but the
+  observability gap was real. → `reviews/repository/pull.repo.ts`.
+- **[concern, confirmed real]** Project Context gathering (§6.3 step 3) had no error
+  handling — a broken agent row or `resolveForRun` failure would have thrown past the
+  route handler, contradicting this same step's own "all optional/degrade-gracefully"
+  framing. Fixed: wrapped in `try/catch`, degrades to `specs = []` with a logged error. →
+  `brief/service.ts` (§6.3 amended above).
+- **[concern, confirmed real]** `BriefRisk.file_refs: string[]` had no way to tell a file
+  path from an endpoint string without guessing from shape. Fixed: `FILE:`/`ENDPOINT:`/
+  `CRON:` prefix convention — prompt instructs it, `refMatchesKnownSet()` grounds by kind,
+  client `parseFileRef`/`displayRef` link only `FILE:` refs. Unprefixed (pre-2026-07-13
+  cached) refs fall back to the original both-sets check, so old cache rows don't break. →
+  §6.1/§6.4 amended above, `brief/constants.ts`, `IntentCard.tsx`.
+- **[nit]** `what`/`why` unbounded length — not applied; prompt already asks for "one or two
+  sentences", judged sufficient mitigation for now.
+- **[nit]** `BriefReviewFocusItem.line` should be `.positive()` — not applied; grounding
+  already validates against real known lines regardless of this schema-level constraint.
+
+**Process note for next time:** run this step between implementation-planner and run-plan,
+not after architecture-reviewer — that's the whole point of catching plan-level gaps before
+an implementer builds against them.

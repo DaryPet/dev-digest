@@ -15,7 +15,7 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Icon, Skeleton } from "@devdigest/ui";
+import { Icon, SEV, Skeleton } from "@devdigest/ui";
 import { useSmartDiff } from "@/lib/hooks/smart-diff";
 import { parsePatch } from "@/components/diff-viewer";
 import type {
@@ -23,8 +23,22 @@ import type {
   SmartDiffRole,
   SmartDiffGroup,
   SmartDiffFile,
+  SmartDiffFindingLine,
+  Severity,
 } from "@devdigest/shared";
 import { s, ROLE_BULLET } from "./styles";
+
+/** Highest-severity finding among a file's finding_lines (CRITICAL > WARNING
+ *  > SUGGESTION) — drives the file-level dot/badge color so it matches the
+ *  worst thing actually found, not a flat warning-yellow regardless of it. */
+const SEVERITY_RANK: Record<Severity, number> = { CRITICAL: 3, WARNING: 2, SUGGESTION: 1 };
+function worstSeverity(findingLines: SmartDiffFindingLine[]): Severity | null {
+  let worst: Severity | null = null;
+  for (const fl of findingLines) {
+    if (!worst || SEVERITY_RANK[fl.severity] > SEVERITY_RANK[worst]) worst = fl.severity;
+  }
+  return worst;
+}
 
 // ----- Types -----
 
@@ -52,13 +66,18 @@ const ROLE_ORDER: SmartDiffRole[] = ["core", "wiring", "boilerplate"];
 
 interface FileDiffProps {
   file: PrFile;
-  findingLines: number[];
+  findingLines: SmartDiffFindingLine[];
   noDiffText: string;
+  severityLabel: (severity: Severity) => string;
 }
 
-function FileDiff({ file, findingLines, noDiffText }: FileDiffProps) {
+function FileDiff({ file, findingLines, noDiffText, severityLabel }: FileDiffProps) {
   const lines = React.useMemo(() => parsePatch(file.patch), [file.patch]);
-  const findingSet = React.useMemo(() => new Set(findingLines), [findingLines]);
+  const findingMap = React.useMemo(() => {
+    const m = new Map<number, Severity>();
+    for (const fl of findingLines) m.set(fl.line, fl.severity);
+    return m;
+  }, [findingLines]);
 
   if (lines.length === 0) {
     return <div style={s.noDiff}>{noDiffText}</div>;
@@ -77,7 +96,10 @@ function FileDiff({ file, findingLines, noDiffText }: FileDiffProps) {
 
         // finding_lines are new-file line numbers (start_line from findings).
         const lineNo = ln.newNo;
-        const isFinding = lineNo != null && findingSet.has(lineNo);
+        const severity = lineNo != null ? findingMap.get(lineNo) : undefined;
+        const isFinding = severity != null;
+        const meta = severity ? SEV[severity] : null;
+        const FindingIcon = meta ? Icon[meta.icon] : null;
 
         const bg =
           ln.kind === "add"
@@ -85,7 +107,7 @@ function FileDiff({ file, findingLines, noDiffText }: FileDiffProps) {
             : ln.kind === "del"
               ? "var(--code-del)"
               : isFinding
-                ? "var(--warn-bg)"
+                ? meta!.bg
                 : "transparent";
 
         const sign = ln.kind === "add" ? "+" : ln.kind === "del" ? "−" : "";
@@ -106,7 +128,11 @@ function FileDiff({ file, findingLines, noDiffText }: FileDiffProps) {
         return (
           <div
             key={i}
-            style={{ ...s.diffLine, background: bg }}
+            style={{
+              ...s.diffLine,
+              background: bg,
+              ...(meta ? { borderLeftColor: meta.c } : {}),
+            }}
             {...findingAttr}
           >
             <span className="mono tnum" style={s.lineNo}>
@@ -118,6 +144,12 @@ function FileDiff({ file, findingLines, noDiffText }: FileDiffProps) {
             <span className="mono" style={s.lineText}>
               {ln.text || " "}
             </span>
+            {meta && FindingIcon && (
+              <span style={{ ...s.findingInlineLabel, color: meta.c }}>
+                <FindingIcon size={12} aria-hidden />
+                {severityLabel(severity!)}
+              </span>
+            )}
           </div>
         );
       })}
@@ -172,6 +204,8 @@ export function SmartDiffViewer({
     wiring: t("roleDescriptions.wiring"),
     boilerplate: t("roleDescriptions.boilerplate"),
   };
+  const severityLabel = (severity: Severity): string =>
+    t(`severityLabel.${severity}`);
 
   // After openOverrides changes (file opened), scroll to any pending target.
   React.useEffect(() => {
@@ -327,8 +361,12 @@ export function SmartDiffViewer({
                 const prFile = fileMap.get(sdFile.path);
                 const open = isFileOpen(sdFile);
                 const hasFindingLines = sdFile.finding_lines.length > 0;
-                // noUncheckedIndexedAccess: [0] is number | undefined.
+                // noUncheckedIndexedAccess: [0] is SmartDiffFindingLine | undefined.
                 const firstFindingLine = sdFile.finding_lines[0];
+                // Worst severity across the file's finding_lines — colors the
+                // file-level dot/badge to match, instead of a flat warning tint.
+                const worst = worstSeverity(sdFile.finding_lines);
+                const worstMeta = worst ? SEV[worst] : SEV.WARNING;
 
                 return (
                   <div
@@ -375,7 +413,10 @@ export function SmartDiffViewer({
                         {sdFile.path}
                       </span>
                       {hasFindingLines && (
-                        <span style={s.findingDot} aria-hidden />
+                        <span
+                          style={{ ...s.findingDot, background: worstMeta.c }}
+                          aria-hidden
+                        />
                       )}
                       <span style={s.headerSpacer} />
                       <span className="mono tnum" style={s.fileStat}>
@@ -383,15 +424,20 @@ export function SmartDiffViewer({
                         <span style={s.delText}>−{sdFile.deletions}</span>
                       </span>
 
-                      {/* Findings badge — only when finding_lines is non-empty. */}
+                      {/* Findings badge — only when finding_lines is non-empty;
+                          color matches the file's worst severity. */}
                       {hasFindingLines && firstFindingLine != null && (
                         <button
                           type="button"
-                          style={s.findingsBadge}
+                          style={{
+                            ...s.findingsBadge,
+                            color: worstMeta.c,
+                            background: worstMeta.bg,
+                          }}
                           onClick={(e) =>
                             handleBadgeClick(
                               sdFile.path,
-                              firstFindingLine,
+                              firstFindingLine.line,
                               open,
                               e,
                             )
@@ -412,6 +458,7 @@ export function SmartDiffViewer({
                         file={prFile}
                         findingLines={sdFile.finding_lines}
                         noDiffText={t("noDiff")}
+                        severityLabel={severityLabel}
                       />
                     )}
                   </div>

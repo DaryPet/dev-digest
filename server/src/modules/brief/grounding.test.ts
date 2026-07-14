@@ -12,7 +12,10 @@ const SMART_DIFF: SmartDiff = {
           pseudocode_summary: null,
           additions: 5,
           deletions: 1,
-          finding_lines: [10, 20],
+          finding_lines: [
+            { line: 10, severity: 'WARNING' },
+            { line: 20, severity: 'CRITICAL' },
+          ],
         },
       ],
     },
@@ -46,7 +49,7 @@ describe('buildGroundingSet', () => {
 });
 
 describe('groundBrief', () => {
-  it('keeps a risk with a grounded file_ref and drops one with none', () => {
+  it('keeps a risk with a grounded file_ref and drops one with none (unprefixed — legacy fallback path)', () => {
     const g = buildGroundingSet(SMART_DIFF, BLAST);
     const raw: Brief = {
       what: 'what',
@@ -61,6 +64,31 @@ describe('groundBrief', () => {
     };
     const grounded = groundBrief(raw, g);
     expect(grounded.risks.map((r) => r.title)).toEqual(['grounded (file)', 'grounded (endpoint)']);
+  });
+
+  // ---- FILE:/ENDPOINT:/CRON: prefix convention (cross-model review finding, 2026-07-13) ----
+
+  it('checks a FILE:-prefixed ref only against knownFiles, an ENDPOINT:/CRON:-prefixed ref only against knownEndpointsOrCrons', () => {
+    const g = buildGroundingSet(SMART_DIFF, BLAST);
+    const raw: Brief = {
+      what: 'what',
+      why: 'why',
+      risk_level: 'medium',
+      risks: [
+        { title: 'grounded (FILE:)', explanation: 'e', file_refs: ['FILE:src/a.ts'] },
+        { title: 'grounded (ENDPOINT:)', explanation: 'e', file_refs: ['ENDPOINT:GET /api/foo'] },
+        { title: 'grounded (CRON:)', explanation: 'e', file_refs: ['CRON:0 * * * *'] },
+        { title: 'ungrounded (FILE: on an endpoint string)', explanation: 'e', file_refs: ['FILE:GET /api/foo'] },
+        { title: 'ungrounded (ENDPOINT: on a file path)', explanation: 'e', file_refs: ['ENDPOINT:src/a.ts'] },
+      ],
+      review_focus: [],
+    };
+    const grounded = groundBrief(raw, g);
+    expect(grounded.risks.map((r) => r.title)).toEqual([
+      'grounded (FILE:)',
+      'grounded (ENDPOINT:)',
+      'grounded (CRON:)',
+    ]);
   });
 
   it('keeps a review_focus item with a known (file, line) and drops one with an unknown line', () => {

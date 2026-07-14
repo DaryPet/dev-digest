@@ -29,8 +29,8 @@ export function buildGroundingSet(smartDiff: SmartDiff, blast: BlastRadius): Gro
   for (const group of smartDiff.groups) {
     for (const file of group.files) {
       knownFiles.add(file.path);
-      for (const line of file.finding_lines) {
-        addLine(knownLinesByFile, file.path, line);
+      for (const fl of file.finding_lines) {
+        addLine(knownLinesByFile, file.path, fl.line);
       }
     }
   }
@@ -46,6 +46,23 @@ export function buildGroundingSet(smartDiff: SmartDiff, blast: BlastRadius): Gro
 }
 
 /**
+ * `BriefRisk.file_refs` entries are typed strings the model is instructed
+ * (`BRIEF_SYSTEM_PROMPT`) to prefix — `FILE:`, `ENDPOINT:`, or `CRON:` — so
+ * grounding can check each ref against the RIGHT known-set instead of
+ * guessing from the string's shape (e.g. "is '/api/users' a file or an
+ * endpoint?" — cross-model review finding, 2026-07-13). An unprefixed ref
+ * (older cached data, or a non-compliant model) falls back to checking both
+ * sets, so grounding never gets stricter than before this change.
+ */
+function refMatchesKnownSet(ref: string, g: GroundingSet): boolean {
+  if (ref.startsWith('FILE:')) return g.knownFiles.has(ref.slice(5));
+  if (ref.startsWith('ENDPOINT:') || ref.startsWith('CRON:')) {
+    return g.knownEndpointsOrCrons.has(ref.slice(ref.indexOf(':') + 1));
+  }
+  return g.knownFiles.has(ref) || g.knownEndpointsOrCrons.has(ref);
+}
+
+/**
  * Drop ungrounded items from a raw Brief:
  *  - risks: kept only when at least one file_ref is a known file OR a known
  *    endpoint/cron string (AC-5/6).
@@ -54,7 +71,7 @@ export function buildGroundingSet(smartDiff: SmartDiff, blast: BlastRadius): Gro
  */
 export function groundBrief(raw: Brief, g: GroundingSet): Brief {
   const risks = raw.risks.filter((risk) =>
-    risk.file_refs.some((ref) => g.knownFiles.has(ref) || g.knownEndpointsOrCrons.has(ref)),
+    risk.file_refs.some((ref) => refMatchesKnownSet(ref, g)),
   );
   const review_focus = raw.review_focus.filter(
     (item) => g.knownLinesByFile.get(item.file)?.has(item.line) ?? false,

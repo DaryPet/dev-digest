@@ -76,10 +76,23 @@ export async function upsertBrief(db: Db, prId: string, brief: Brief): Promise<v
     .onConflictDoUpdate({ target: t.prBrief.prId, set: { json: brief } });
 }
 
-/** Parse failure => undefined (treated as a cache miss, never throws). */
+/**
+ * Parse failure => undefined (treated as a cache miss, never throws) so a
+ * corrupt/stale-schema row can't 500 the request. A parse failure is still
+ * logged loudly: silently treating it as "just recompute" would otherwise
+ * hide a schema-drift bug behind a quietly-growing LLM cost/latency spike on
+ * every request for that PR (cross-model review finding, 2026-07-13).
+ */
 export async function getBrief(db: Db, prId: string): Promise<Brief | undefined> {
   const [row] = await db.select().from(t.prBrief).where(eq(t.prBrief.prId, prId));
   if (!row) return undefined;
   const parsed = Brief.safeParse(row.json);
-  return parsed.success ? parsed.data : undefined;
+  if (!parsed.success) {
+    console.error(
+      `[brief] cached Brief for pr ${prId} failed schema validation — treating as cache miss (will recompute):`,
+      parsed.error.message,
+    );
+    return undefined;
+  }
+  return parsed.data;
 }
