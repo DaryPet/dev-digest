@@ -21,6 +21,7 @@ Reusable AI skills that provide specialized knowledge and workflows. Canonical l
 | [pr-self-review](pr-self-review/SKILL.md) | Workflow | Pre-PR second pass: routes the uncommitted diff to surface skills and gates on critical findings (PreToolUse hook enforced) |
 | [workflow-retro](workflow-retro/SKILL.md) | Workflow | Manual-only (`/workflow-retro`) retrospective of a multi-agent run: script-computed token/cost/agent metrics from the session transcript + qualitative analysis (duplicated context, waste, actionable recommendations), ledger line in `docs/retros/ledger.md` |
 | [dev-workflow](dev-workflow/SKILL.md) | Workflow | Gated agent pipeline for any new TЗ: classify type/size, then ask ALL gates (researcher? development path — full SDD / plan-only / inline? implementation approach — team / single? architecture review?) in ONE upfront batch with recommendations, then execute autonomously to the end — no re-asking mid-flight; tests/insights/docs automatic; trivial XS collapses to one question (plain chat or run the batch) |
+| [dependency-checker](dependency-checker/SKILL.md) | Workflow | Repo dependency audit: on-disk `node_modules` size per package, Mermaid flowchart of internal (tsconfig path-alias) edges vs external npm deps, version drift, possibly-unused deps, cross-package relative-import anti-patterns, severity-tiered (P0/P1/P2/Info) findings & priorities — no network calls |
 
 ## What Are Skills?
 

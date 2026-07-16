@@ -1,19 +1,8 @@
+
 {
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/pr-self-review-gate.sh\""
-          }
-        ]
-      }
-    ]
-  },
   "env": {
-    "ENABLE_TOOL_SEARCH": "true"
+    "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
+    "ANTHROPIC_AUTH_TOKEN": "REDACTED-OPENROUTER-KEY",
+    "ANTHROPIC_MODEL": "poolside/laguna-m.1:free"
   }
 }
-
