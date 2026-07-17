@@ -11,6 +11,22 @@ vi.mock("../../../../../lib/hooks/agents", () => ({
   useProviderModels: () => ({ data: [{ id: "gpt-4.1", provider: "openai" }] }),
 }));
 
+// EvalsTab (child) calls eval hooks — mock them here too, per the 2026-07-06
+// insight (a child card's new data hook must be mocked in every composite
+// test that renders it, not just the card's own test). The Config-tab smoke
+// test below never switches to the Evals tab, but AgentEditor renders all
+// tab branches conditionally from the SAME component tree, so the module
+// import still resolves eagerly.
+vi.mock("../../../../../lib/hooks/eval", () => ({
+  useEvalCaseStatuses: () => ({ data: [], isLoading: false }),
+  useEvalDashboard: () => ({ data: undefined, isLoading: false }),
+  useRunAllEvals: () => ({ mutate: vi.fn(), isPending: false }),
+  useRunEvalCase: () => ({ mutate: vi.fn(), isPending: false }),
+  useEvalCase: () => ({ data: undefined, isLoading: false }),
+  useCreateEvalCase: () => ({ mutate: vi.fn(), isPending: false }),
+  useUpdateEvalCase: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
 import { AgentEditor } from "./AgentEditor";
 
 afterEach(cleanup);

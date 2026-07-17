@@ -32,7 +32,7 @@ function parseFileRef(ref: string): { file: string; startLine?: number; endLine?
   const value = ref.slice(5);
   const withLine = value.match(/^([^\s:]+):(\d+)(?:-(\d+))?$/);
   if (withLine) {
-    return { file: withLine[1], startLine: Number(withLine[2]), endLine: withLine[3] ? Number(withLine[3]) : undefined };
+    return { file: withLine[1]!, startLine: Number(withLine[2]), endLine: withLine[3] ? Number(withLine[3]) : undefined };
   }
   return { file: value };
 }

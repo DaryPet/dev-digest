@@ -2,13 +2,18 @@
   "dashboard": {
     "defaultTitle": "Eval Dashboard",
     "loading": "Loading eval metrics…",
-    "casesSummary": "{count, plural, one {# eval case} other {# eval cases}} · gold set · {runs, plural, one {# run} other {# runs}}",
+    "casesSummary": "Regression harness · {runs, plural, one {# run} other {# runs}} on the {count}-trace gold set",
+    "allAgents": "All agents",
+    "rangeLabel": "{days} days",
     "configure": "Configure eval cases →",
     "runEval": "Run eval ({count})",
     "running": "Running…",
     "metricTrend": "Metric trend",
     "recentRuns": "Recent runs",
+    "selectedCount": "{count} selected",
+    "compare": "Compare",
     "noRuns": "No runs yet. Create an eval case and run it.",
+    "noRunsInRange": "No runs in the last {days} days.",
     "metrics": {
       "recall": "RECALL",
       "precision": "PRECISION",
@@ -21,14 +26,13 @@
     },
     "table": {
       "ranAt": "Ran at",
+      "version": "Version",
       "recall": "Recall",
       "precision": "Precision",
       "citation": "Citation",
       "pass": "Pass",
       "cost": "Cost"
-    },
-    "pass": "pass",
-    "fail": "fail"
+    }
   },
   "caseEditor": {
     "newCase": "New eval case",
@@ -37,31 +41,48 @@
     "running": "Running…",
     "save": "Save",
     "saving": "Saving…",
+    "cancel": "Cancel",
     "nameLabel": "Name",
     "namePlaceholder": "stripe-key-leak",
     "inputLabel": "Input",
     "tabs": {
       "diff": "Diff",
+      "files": "Files",
       "prMeta": "PR meta"
     },
     "diffPlaceholder": "--- a/src/config.ts\n+++ b/src/config.ts\n@@ -10,6 +10,7 @@\n+  stripeKey: \"sk_live_...\"",
+    "filesPlaceholder": "['{\"path\": \"src/config.ts\", \"patch\": \"@@ -10,6 +10,7 @@\\n+  stripeKey: \\\"sk_live_...\\\"\"}']",
     "titleLabel": "Title",
     "titlePlaceholder": "Add Stripe integration",
     "bodyLabel": "Body",
     "bodyPlaceholder": "Wire up payments via Stripe SDK.",
     "preview": "Preview",
     "expectedOutput": "Expected output",
+    "findingSkeleton": "Finding skeleton",
     "validJson": "valid JSON",
     "invalidJson": "invalid JSON",
+    "expectedOutputError": "Expected output must be valid JSON — an array where every item has file (string), start_line (integer), and end_line (integer).",
+    "runOnSave": "Run on save",
     "lastRunPassed": "Last run passed",
     "lastRunFailed": "Last run failed",
+    "lastRunDetail": "expected {expected, plural, one {# finding} other {# findings}}, got {got} · {duration} · {cost}",
     "resultSummary": "recall {recall}% · precision {precision}% · citation {citation}% · {duration}s"
   },
   "evalsTab": {
     "metricsTitle": "Eval metrics",
     "metricsSubtitle": "Recall / Precision / Citation for this agent's eval cases",
+    "loadingMetrics": "Loading eval metrics…",
+    "metrics": {
+      "recall": "RECALL",
+      "precision": "PRECISION",
+      "citationAccuracy": "CITATION ACCURACY",
+      "tracesPassed": "TRACES PASSED"
+    },
+    "runAll": "Run all evals",
+    "passingCounter": "{passing}/{total} passing",
+    "viewDashboard": "View full dashboard →",
     "casesHeading": "Eval cases",
-    "newCase": "New case",
+    "newCase": "New eval case",
     "loadingCases": "Loading cases…",
     "emptyCases": "No eval cases yet. Create one to assert this agent's expected findings on a sample diff.",
     "neverRun": "never run",
@@ -71,7 +92,9 @@
     "run": "Run",
     "running": "Running…",
     "edit": "Edit",
-    "delete": "Delete"
+    "delete": "Delete",
+    "deleteConfirmTitle": "Delete eval case?",
+    "deleteConfirmBody": "This permanently deletes \"{name}\" and its run history. This cannot be undone."
   },
   "page": {
     "crumbSkillsLab": "Skills Lab",
@@ -80,5 +103,47 @@
     "crumbEvals": "Evals",
     "crumbNewCase": "New case",
     "crumbEvalCase": "Eval case"
+  },
+  "overview": {
+    "title": "Eval Dashboard",
+    "subtitle": "Recall / precision / citation trends across every agent's gold set",
+    "loading": "Loading eval agents…",
+    "runAllAgents": "Run all agents",
+    "running": "Running…",
+    "emptyTitle": "No eval agents yet",
+    "emptyBody": "Add eval cases to an agent's Evals tab to see it here.",
+    "agentsTitle": "Agents",
+    "recentRunsTitle": "Recent eval runs · all agents",
+    "noRecentRuns": "No eval runs yet across any agent.",
+    "lastRun": "Last run v{version} · {date} · {passed}/{total} pass",
+    "neverRun": "Never run · {passed}/{total} pass",
+    "metrics": {
+      "recall": "RECALL",
+      "precision": "PREC",
+      "citation": "CITE"
+    },
+    "table": {
+      "agent": "Agent",
+      "case": "Case"
+    }
+  },
+  "compare": {
+    "title": "Compare v{versionA} vs v{versionB}",
+    "loading": "Loading comparison…",
+    "metricsHeading": "Metric deltas",
+    "metricLabels": {
+      "recall": "Recall",
+      "precision": "Precision",
+      "citationAccuracy": "Citation accuracy",
+      "cost": "Cost"
+    },
+    "versionColumn": "v{version}",
+    "deltaColumn": "Delta",
+    "noData": "No runs recorded for this version yet.",
+    "promptDiffHeading": "System prompt diff",
+    "identicalPrompts": "No differences — system prompts are identical.",
+    "promote": "Promote v{version}",
+    "promoting": "Promoting…",
+    "close": "Close"
   }
 }

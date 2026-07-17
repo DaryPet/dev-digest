@@ -19,6 +19,8 @@ import {
   type Category,
 } from "@devdigest/ui";
 import type { FindingRecord, FindingActionKind } from "@devdigest/shared";
+import { useCreateEvalCaseFromFinding } from "@/lib/hooks/eval";
+import { notify } from "@/lib/toast";
 import { SEV_COLOR_FALLBACK } from "./constants";
 import { lineLabel } from "./helpers";
 import { githubBlobUrl } from "../../../../../../../lib/github-urls";
@@ -43,6 +45,7 @@ export function FindingCard({
 }) {
   const t = useTranslations("prReview");
   const [expanded, setExpanded] = React.useState(defaultExpanded ?? false);
+  const createEvalCase = useCreateEvalCaseFromFinding();
   const sevColor = SEV[f.severity as Severity]?.c ?? SEV_COLOR_FALLBACK;
   const fileHref =
     repoFullName && headSha
@@ -110,6 +113,25 @@ export function FindingCard({
             >
               {t("finding.dismiss")}
             </Button>
+            {muted && (
+              <Button
+                kind="ghost"
+                size="sm"
+                icon="FlaskConical"
+                disabled={createEvalCase.isPending}
+                loading={createEvalCase.isPending}
+                onClick={() =>
+                  createEvalCase.mutate(f.id, {
+                    onError: (err) =>
+                      notify.error(
+                        err instanceof Error ? err.message : "Couldn't create the eval case.",
+                      ),
+                  })
+                }
+              >
+                {t("finding.turnIntoEvalCase")}
+              </Button>
+            )}
           </div>
         </div>
       )}

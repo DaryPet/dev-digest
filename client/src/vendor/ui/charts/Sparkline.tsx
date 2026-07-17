@@ -13,6 +13,13 @@ export function Sparkline({
   h?: number;
 }) {
   if (!data.length) return null;
+  if (data.length === 1) {
+    return (
+      <svg width={w} height={h} style={{ display: "block", overflow: "visible" }}>
+        <circle cx={w} cy={h / 2} r={2} fill={color} />
+      </svg>
+    );
+  }
   const min = Math.min(...data);
   const max = Math.max(...data);
   const span = max - min || 1;

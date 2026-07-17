@@ -1,0 +1,117 @@
+import type { CSSProperties } from "react";
+
+/** Co-located styles for the multi-agent Eval Dashboard overview page.
+    Mirrors `pulls/styles.ts`'s pageHeader/tableCard convention — AppFrame's
+    <main> has no default padding (client/INSIGHTS.md 2026-06-28). */
+export const s = {
+  pageHeader: {
+    padding: "24px 32px 10px",
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 16,
+  } satisfies CSSProperties,
+  pageTitle: { fontSize: 24, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text-primary)" } satisfies CSSProperties,
+  pageSubtitle: { fontSize: 14, color: "var(--text-secondary)", marginTop: 4 } satisfies CSSProperties,
+
+  body: { padding: "0 32px 44px", display: "flex", flexDirection: "column", gap: 28 } satisfies CSSProperties,
+
+  sectionHeadingRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
+  sectionHeadingText: {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
+
+  agentList: { display: "flex", flexDirection: "column", gap: 8 } satisfies CSSProperties,
+  agentRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+    padding: "12px 16px",
+    borderRadius: 8,
+    border: "1px solid var(--border)",
+    background: "var(--bg-elevated)",
+    textDecoration: "none",
+  } satisfies CSSProperties,
+  agentIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 7,
+    background: "var(--accent-bg)",
+    color: "var(--accent)",
+    display: "grid",
+    placeItems: "center",
+    flexShrink: 0,
+  } satisfies CSSProperties,
+  agentInfo: { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 } satisfies CSSProperties,
+  agentNameRow: { display: "flex", alignItems: "center", gap: 8, minWidth: 0 } satisfies CSSProperties,
+  agentName: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: "var(--text-primary)",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  } satisfies CSSProperties,
+  agentModelChip: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: "var(--text-muted)",
+    border: "1px solid var(--border)",
+    borderRadius: 4,
+    padding: "1px 6px",
+    flexShrink: 0,
+  } satisfies CSSProperties,
+  agentMeta: {
+    fontSize: 12,
+    color: "var(--text-muted)",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  } satisfies CSSProperties,
+  agentMetrics: { display: "flex", alignItems: "center", gap: 18, flexShrink: 0 } satisfies CSSProperties,
+  agentMetric: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 } satisfies CSSProperties,
+  agentMetricLabel: { fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: "var(--text-muted)" } satisfies CSSProperties,
+  agentMetricValue: (color: string): CSSProperties => ({ fontSize: 15, fontWeight: 700, color }),
+  agentTrend: { flexShrink: 0, width: 72 } satisfies CSSProperties,
+  agentChevron: { flexShrink: 0, color: "var(--text-muted)", display: "flex" } satisfies CSSProperties,
+
+  table: {
+    border: "1px solid var(--border)",
+    borderRadius: 10,
+    overflow: "hidden",
+    background: "var(--bg-elevated)",
+  } satisfies CSSProperties,
+  row: {
+    display: "grid",
+    gridTemplateColumns: "1.3fr 1fr 0.4fr 1.1fr 1.1fr 1.1fr 0.5fr",
+    gap: 16,
+    alignItems: "center",
+    padding: "14px 20px",
+    borderBottom: "1px solid var(--border)",
+    fontSize: 13,
+    color: "var(--text-secondary)",
+  } satisfies CSSProperties,
+  cellPrimary: {
+    color: "var(--text-primary)",
+    fontWeight: 600,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  } satisfies CSSProperties,
+  runDate: { color: "var(--text-muted)", fontSize: 13 } satisfies CSSProperties,
+  versionTag: { color: "var(--accent)", fontWeight: 700, fontSize: 13 } satisfies CSSProperties,
+  metricBarCell: { display: "flex", alignItems: "center", gap: 10 } satisfies CSSProperties,
+  metricBarTrack: { flex: 1, maxWidth: 90 } satisfies CSSProperties,
+  metricBarPct: { fontSize: 13, color: "var(--text-secondary)", flexShrink: 0, width: 34 } satisfies CSSProperties,
+  passCount: { fontWeight: 700, color: "var(--text-primary)", fontSize: 13, textAlign: "right" } satisfies CSSProperties,
+} as const;
