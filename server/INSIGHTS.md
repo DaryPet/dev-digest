@@ -199,6 +199,36 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   `(svc as unknown as {repo}).repo = {...}`. Evidence:
   `src/modules/project-context/{repository,service}.ts`.
 
+- **2026-07-17** — The L06 eval module (`server/src/modules/eval/service.ts`)
+  is a full cross-domain feature (case CRUD, from-finding creation, run
+  execution, dashboard aggregation, Promote) that reads agents/reviews data
+  EXCLUSIVELY through `container.agentsRepo`/`container.reviewRepo` — zero
+  `new AgentsRepository(...)`/`new ReviewRepository(...)` anywhere in the
+  module, confirmed by grep. It's the fourth cross-domain module after
+  `intent`/`smart-diff`/`project-context` (the 2026-07-03/07-11 entries'
+  deviation trio) and did NOT need to bypass the accessor pattern to get its
+  job done — including a route (`POST /findings/:id/eval-case`) that resolves
+  finding→review→agent→PR-files, arguably the most cross-domain-heavy read in
+  the codebase so far. Strengthens the case, per the 2026-07-03 entry's own
+  closing note, that the `intent`/`smart-diff`/`project-context` direct
+  construction is a real cleanup opportunity, not an unavoidable pattern —
+  due if a cross-cutting pass through those three ever happens.
+- **2026-07-17** — Design precedent for "a deeply-nested leaf component needs
+  an action that requires data owned by an ancestor 5+ levels up": prefer a
+  dedicated server route that re-resolves the needed context from a stable
+  identifier, over threading new props through every intermediate component.
+  `POST /findings/:id/eval-case` (`modules/eval/service.ts`,
+  `createCaseFromFinding`) resolves `finding.id` → review → agent → PR files
+  entirely server-side so `FindingCard` (5 component levels below the page
+  that has the PR/agent context) needed ZERO new props to gain a "Turn into
+  eval case" action — confirmed by architecture-reviewer: the prop list is
+  byte-identical to before the feature. The alternative (client assembles the
+  diff fragment and threads `agentId`/`prFiles` down through
+  `FindingsTab`→`ReviewRunAccordion`→`FindingsPanel`→`FindingCard`) was
+  explicitly considered and rejected in `plans/eval-pipeline.md` §2. Reuse
+  this "resolve server-side from an id, not client-side via prop-threading"
+  pattern for the next feature with a similar shape.
+
 ## Tooling Notes
 
 - **2026-06-20** — `pnpm typecheck`/`pnpm test` abort in this env on a dep

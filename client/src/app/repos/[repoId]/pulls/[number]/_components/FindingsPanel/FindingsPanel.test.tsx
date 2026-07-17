@@ -8,6 +8,13 @@ vi.mock("../../../../../../../lib/hooks/reviews", () => ({
   useFindingAction: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
+// FindingCard (child) calls useCreateEvalCaseFromFinding — mock it here too,
+// per the 2026-07-06 insight (a child card's new data hook must be mocked in
+// every composite test that renders it, not just the card's own test).
+vi.mock("../../../../../../../lib/hooks/eval", () => ({
+  useCreateEvalCaseFromFinding: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
 import { FindingsPanel } from "./FindingsPanel";
 
 afterEach(cleanup);

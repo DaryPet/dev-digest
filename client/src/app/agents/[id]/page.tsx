@@ -5,6 +5,7 @@
 
 import React from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button, ErrorState, Skeleton, Icon, Badge } from "@devdigest/ui";
 import { AppShell } from "../../../components/app-shell";
 import { AgentsRail } from "../_components/AgentsRail";
@@ -22,6 +23,7 @@ export default function AgentEditorPage() {
   const search = useSearchParams();
   const router = useRouter();
   const { id } = params;
+  const t = useTranslations("prReview");
 
   const { data: agent, isLoading, isError, error, refetch } = useAgent(id);
 
@@ -73,8 +75,8 @@ export default function AgentEditorPage() {
               </Badge>
               {!agent.enabled && <Badge color="var(--text-muted)">disabled</Badge>}
               <div style={{ marginLeft: "auto" }}>
-                <Button kind="secondary" size="sm" icon="GitPullRequest" onClick={() => router.push("/")}>
-                  Run on a PR…
+                <Button kind="secondary" size="sm" icon="Sparkles" onClick={() => router.push("/")}>
+                  {t("runReview.runReview")}
                 </Button>
               </div>
             </div>

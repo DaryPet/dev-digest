@@ -5,7 +5,24 @@ import type { FindingRecord } from "@devdigest/shared";
 import messages from "../../../../../../../../messages/en/prReview.json";
 import { FindingCard } from "./FindingCard";
 
-afterEach(cleanup);
+const { evalCaseState, mutateEvalCase, toastError } = vi.hoisted(() => ({
+  evalCaseState: { pending: false },
+  mutateEvalCase: vi.fn(),
+  toastError: vi.fn(),
+}));
+vi.mock("@/lib/hooks/eval", () => ({
+  useCreateEvalCaseFromFinding: () => ({ mutate: mutateEvalCase, isPending: evalCaseState.pending }),
+}));
+vi.mock("@/lib/toast", () => ({
+  notify: { error: toastError, success: vi.fn(), info: vi.fn(), toast: vi.fn() },
+}));
+
+afterEach(() => {
+  cleanup();
+  evalCaseState.pending = false;
+  mutateEvalCase.mockClear();
+  toastError.mockClear();
+});
 
 const FINDING: FindingRecord = {
   id: "f1",
@@ -56,5 +73,46 @@ describe("FindingCard (smoke, both themes)", () => {
     expect(onAction).toHaveBeenCalledWith("accept");
     fireEvent.click(screen.getByText("Dismiss"));
     expect(onAction).toHaveBeenCalledWith("dismiss");
+  });
+});
+
+describe("FindingCard — Turn into eval case", () => {
+  it("does not render on a finding that is neither accepted nor dismissed", () => {
+    renderWithIntl(<FindingCard f={FINDING} defaultExpanded onAction={() => {}} />);
+    expect(screen.queryByText("Turn into eval case")).not.toBeInTheDocument();
+  });
+
+  it("renders for an accepted finding and creates a new case on every click (AC-6)", () => {
+    const accepted: FindingRecord = { ...FINDING, accepted_at: "2026-07-01T00:00:00Z" };
+    renderWithIntl(<FindingCard f={accepted} defaultExpanded onAction={() => {}} />);
+    const btn = screen.getByText("Turn into eval case");
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+    expect(mutateEvalCase).toHaveBeenCalledTimes(2);
+    expect(mutateEvalCase).toHaveBeenNthCalledWith(1, "f1", expect.anything());
+    expect(mutateEvalCase).toHaveBeenNthCalledWith(2, "f1", expect.anything());
+  });
+
+  it("renders for a dismissed finding too", () => {
+    const dismissed: FindingRecord = { ...FINDING, dismissed_at: "2026-07-01T00:00:00Z" };
+    renderWithIntl(<FindingCard f={dismissed} defaultExpanded onAction={() => {}} />);
+    expect(screen.getByText("Turn into eval case")).toBeInTheDocument();
+  });
+
+  it("disables the button while the mutation is pending", () => {
+    evalCaseState.pending = true;
+    const accepted: FindingRecord = { ...FINDING, accepted_at: "2026-07-01T00:00:00Z" };
+    renderWithIntl(<FindingCard f={accepted} defaultExpanded onAction={() => {}} />);
+    expect(screen.getByText("Turn into eval case").closest("button")).toBeDisabled();
+  });
+
+  it("surfaces a mutation failure via notify.error instead of failing silently", () => {
+    mutateEvalCase.mockImplementationOnce((_id, opts) => {
+      opts?.onError?.(new Error("review has no agent to attach the case to"));
+    });
+    const dismissed: FindingRecord = { ...FINDING, dismissed_at: "2026-07-01T00:00:00Z" };
+    renderWithIntl(<FindingCard f={dismissed} defaultExpanded onAction={() => {}} />);
+    fireEvent.click(screen.getByText("Turn into eval case"));
+    expect(toastError).toHaveBeenCalledWith("review has no agent to attach the case to");
   });
 });

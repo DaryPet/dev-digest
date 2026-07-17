@@ -278,6 +278,83 @@ choice (tradeoffs considered, what was rejected and why), not the *what*
   Evidence: `components/ContextDocumentAttachList/ContextDocumentAttachList.tsx`,
   `_components/ProjectContextSection/ProjectContextSection.tsx`.
 
+- **2026-07-17** — `vi.mock("../relative/path", factory)` cannot substitute a
+  relative-path module that has **zero file on disk** in this vitest 2.1.9 +
+  Vite 5.4 setup: `vite:import-analysis` fails to resolve the import while
+  transforming the *importing* file, before Vitest's mock registry gets a
+  chance to intercept — true for both static `import` and a dynamic
+  `import()` with `/* @vite-ignore */`. The mock only works once *some* file
+  exists at that path (any content — the mock factory then fully overrides it
+  at runtime). Consequence for plans that sequence parallel UI tasks around a
+  not-yet-landed sibling component (e.g. a page importing a modal a parallel
+  task hasn't built yet): don't assume "mock the import" lets that page's own
+  test run standalone before the sibling file exists — either land the
+  sibling first, or the dependent test genuinely can't execute (only `tsc`
+  typechecks against the missing module, `vitest` collects 0 tests) until it
+  does. Hit building `eval-dashboard/[agentId]/page.tsx` against T-E's
+  not-yet-landed `CompareRunsModal` — resolved itself once T-E's real file
+  landed. Evidence: `src/app/eval-dashboard/[agentId]/page.test.tsx`.
+- **2026-07-17** — `@devdigest/ui`'s `Sparkline` divides by
+  `(data.length - 1)`, so a single-point trend array renders an SVG path with
+  `NaN` coordinates — silently broken, no crash, no visible error. Feed it
+  ≥2 points, or guard/skip rendering it for a first-ever-run trend of length
+  1 (e.g. an eval dashboard's mini-trend before a second run exists).
+  Evidence: `src/app/eval-dashboard/page.tsx`.
+- **2026-07-17** — A test file with **two or more** `vi.mock(...)` calls,
+  where a later block's factory references a mock function declared as a
+  bare top-level `const` (not `vi.hoisted`), throws "Cannot access 'x' before
+  initialization" — a TDZ violation from Vitest hoisting ALL `vi.mock` calls
+  above the file's top-level statements. A single `vi.mock` + bare `const` is
+  fine (works elsewhere in this codebase, e.g.
+  `CreateSkillFromConventionsModal.test.tsx`); it's specifically the
+  **second-and-later** `vi.mock` block that trips over an outer-scope bare
+  `const` declared before it. Fix: wrap all cross-mock shared fns/state in
+  one `vi.hoisted(() => ({...}))` destructure whenever a component under test
+  pulls in more than one mocked module (e.g. a data hook + `@/lib/toast`'s
+  `notify`). Evidence: `src/app/repos/[repoId]/pulls/[number]/_components/FindingCard/FindingCard.test.tsx`.
+- **2026-07-17** — Refines the 2026-06-30 "`vitest run` filter is a plain
+  substring" note: a combined alternation pattern like
+  `vitest run "A|B|C"` doesn't just fail to dot-match brackets — it matches
+  **zero files outright**, because no real file path contains a literal `|`
+  character. A multi-suite verify script (e.g. `scripts/verify-l06.sh`) needs
+  one separate `vitest run "<substring>"` call per suite, not one combined
+  `"A|B|C"` invocation — confirmed by running the combined pattern directly
+  (`No test files found, exiting with code 1`). A nested suite is
+  automatically covered by its parent directory's substring (e.g.
+  `"eval-dashboard"` already matches `eval-dashboard/_components/CompareRunsModal/CompareRunsModal.test.tsx`
+  since it's path-nested) — no separate call needed for it.
+- **2026-07-17** — `EvalTrendPoint` (`@devdigest/shared`'s `eval-ci.ts`,
+  `{ran_at, recall, precision, citation_accuracy, pass_rate, cost_usd}`) has
+  **no `version` field**, so a component that needs "the metrics for version
+  N specifically" (e.g. Compare-runs' per-side delta) cannot pick a trend
+  point by version number or by array position (`EvalDashboard.trend` is
+  unbounded across ALL version-groups ever run, not just the two being
+  compared). Resolution used by `CompareRunsModal`: use
+  `EvalDashboard.recent_runs` (`EvalRunRecord[]`, capped at 20 rows
+  server-side) instead — each row's `actual_output` embeds
+  `{snapshot: {version, ...}}` (D3), so cast
+  `run.actual_output as {snapshot?: {version?: number}} | null | undefined`,
+  filter by the target version, and average the matching subset's metrics
+  client-side (skip nulls; render "—" if zero rows match within the 20-row
+  window). Mirrors the cast pattern already used in
+  `EvalCaseEditorModal.tsx`/`[agentId]/helpers.ts`'s `snapshotVersion`. Any
+  future eval-dashboard work needing "metrics for a specific version" should
+  reuse this `recent_runs` + extracted-snapshot-version pattern rather than
+  trying to make `trend` version-aware. Evidence:
+  `src/app/eval-dashboard/_components/CompareRunsModal/helpers.ts`.
+- **2026-07-17** — `EvalAgentSummary` (`lib/hooks/eval.ts`, used by the
+  `/eval-dashboard` overview's per-agent row) carries `agent_id`/`agent_name`/
+  `dashboard` only — no `model`. To show the model badge the design mock
+  requires on each agent row, fetch the full `Agent[]` separately via
+  `useAgents()` (`lib/hooks/agents.ts`) and join by `agent_id → agent.model`
+  client-side; don't assume eval summary data is a superset of the Agent
+  record. The row's "Last run vN · date · X/Y pass" line reuses the existing
+  `snapshotVersion()` helper from the sibling `[agentId]/helpers.ts` route
+  (imported cross-route as `"./[agentId]/helpers"`) rather than duplicating
+  the `actual_output.snapshot.version` cast — X/Y pass comes from
+  `dashboard.current.traces_passed/traces_total`, not from parsing the run
+  list. Evidence: `src/app/eval-dashboard/page.tsx`.
+
 ## Decisions
 
 - **2026-07-02** — The PR Overview tab is laid out 1:1 per the design mock
